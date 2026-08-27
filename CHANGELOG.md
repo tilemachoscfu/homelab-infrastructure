@@ -8,6 +8,8 @@
 - Added detailed architecture and storage-boundary diagrams.
 - Published a linked roadmap board with initial reliability and documentation
   issues.
+- Removed the obsolete Home Assistant `http:` YAML block after verifying its
+  successful migration to UI-managed network settings.
 
 ## 2026-08-27
 
