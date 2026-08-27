@@ -116,5 +116,6 @@ update.
 ## Contributing
 
 Suggestions and carefully scoped improvements are welcome. Read
-[CONTRIBUTING.md](CONTRIBUTING.md), browse the [roadmap](ROADMAP.md), or open an
-[issue](https://github.com/tilemachoscfu/homelab-infrastructure/issues).
+[CONTRIBUTING.md](CONTRIBUTING.md), browse the
+[live project board](https://github.com/users/tilemachoscfu/projects/1), or open
+an [issue](https://github.com/tilemachoscfu/homelab-infrastructure/issues).

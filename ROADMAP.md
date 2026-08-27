@@ -3,6 +3,9 @@
 The roadmap tracks improvements that make the homelab safer, easier to restore
 and easier for others to understand.
 
+Progress is managed on the public
+[Homelab Roadmap board](https://github.com/users/tilemachoscfu/projects/1).
+
 ## Reliability
 
 - [ ] Review qBittorrent, Gluetun and AirVPN throughput and port forwarding
