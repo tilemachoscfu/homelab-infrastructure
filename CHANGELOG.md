@@ -10,6 +10,8 @@
   issues.
 - Removed the obsolete Home Assistant `http:` YAML block after verifying its
   successful migration to UI-managed network settings.
+- Allowed the VPN-isolated Soularr service to reach Lidarr on the LAN while
+  keeping Internet traffic routed through Gluetun/AirVPN.
 
 ## 2026-08-27
 

@@ -13,6 +13,7 @@ services:
       - VPN_TYPE=wireguard
       - TZ=Europe/Athens
       - FIREWALL_VPN_INPUT_PORTS=14285
+      - FIREWALL_OUTBOUND_SUBNETS=${LAN_SUBNET:?Set LAN_SUBNET}
     ports:
       - "8081:8081"
       - "5030:5030"

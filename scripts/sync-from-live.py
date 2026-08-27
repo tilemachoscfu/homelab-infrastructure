@@ -2,6 +2,7 @@
 """Export an allowlisted, sanitized view of the live Compose stacks."""
 
 from pathlib import Path
+import ipaddress
 import os
 import re
 import shutil
@@ -62,6 +63,11 @@ def sanitize(text: str) -> str:
     text = text.replace(str(LIVE), "${DOCKER_ROOT:-/opt/homelab}")
     lan_ip = detected_lan_ip()
     if lan_ip:
+        live_subnet = os.environ.get(
+            "HOMELAB_LIVE_SUBNET",
+            str(ipaddress.ip_network(f"{lan_ip}/24", strict=False)),
+        )
+        text = text.replace(live_subnet, "${LAN_SUBNET:?Set LAN_SUBNET}")
         text = text.replace(lan_ip, "${HOMELAB_IP:?Set HOMELAB_IP}")
     text = text.replace(socket.gethostname(), "homelab-host")
     text = re.sub(

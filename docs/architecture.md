@@ -91,6 +91,8 @@ Lidarr wanted list -> Soularr -> slskd -> Lidarr import -> Navidrome
 qBittorrent and slskd share Gluetun's network namespace. Gluetun must become
 healthy before either downloader starts. If the VPN stops, its network boundary
 prevents those download clients from silently falling back to the host route.
+An explicit outbound-LAN firewall exception allows Soularr to reach Lidarr on
+the local host without bypassing the VPN for Internet traffic.
 
 ## Storage boundaries
 
