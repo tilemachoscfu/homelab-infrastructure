@@ -12,6 +12,9 @@
   successful migration to UI-managed network settings.
 - Allowed the VPN-isolated Soularr service to reach Lidarr on the LAN while
   keeping Internet traffic routed through Gluetun/AirVPN.
+- Enabled automatic Greek subtitle profiles for new movies and series, assigned
+  the profile to existing unconfigured movies, and added a tested fallback
+  provider for quota resilience.
 
 ## 2026-08-27
 

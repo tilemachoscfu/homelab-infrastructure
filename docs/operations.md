@@ -31,3 +31,20 @@ Before removal, confirm that the stored UI configuration contains the expected
 forwarded-header and trusted-proxy settings. Back up both the YAML file and the
 HTTP storage record, validate the configuration, then restart only Home
 Assistant and verify local and reverse-proxy access.
+
+## Bazarr subtitle automation
+
+New Radarr movies and Sonarr series must receive a language profile when they
+are first synchronized into Bazarr. Keep the default Greek profile enabled for
+both media types; otherwise new items can appear in Bazarr with no requested
+languages and will never enter the wanted-subtitles queue.
+
+Use more than one provider so a temporary outage or daily quota does not stop
+the entire workflow. This installation uses authenticated OpenSubtitles access
+plus credential-free Greek-capable fallbacks. Provider credentials stay only
+in Bazarr's private configuration.
+
+The movie score threshold permits title-and-year fallback matches when an exact
+release match is unavailable. This improves coverage but can occasionally
+require subtitle timing adjustment. Keep the stricter series threshold because
+episode mismatches are more likely.
