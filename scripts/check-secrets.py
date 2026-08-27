@@ -43,7 +43,16 @@ def is_safe_placeholder(value: str) -> bool:
 def files_to_scan() -> list[Path]:
     try:
         output = subprocess.check_output(
-            ["git", "-C", str(ROOT), "ls-files"], text=True
+            [
+                "git",
+                "-C",
+                str(ROOT),
+                "ls-files",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+            ],
+            text=True,
         )
         return [ROOT / line for line in output.splitlines() if line]
     except subprocess.CalledProcessError:
