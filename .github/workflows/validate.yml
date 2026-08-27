@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Scan for secrets and private files
         run: ./scripts/check-secrets.py
@@ -30,6 +30,8 @@ jobs:
 
       - name: Validate Compose templates
         run: |
+          mkdir -p stacks/slskd-soularr
+          touch stacks/slskd-soularr/.env
           for compose_file in stacks/*/compose.yaml; do
             stack_dir="$(dirname "$compose_file")"
             touch "$stack_dir/.env"
