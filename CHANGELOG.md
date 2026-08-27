@@ -6,6 +6,8 @@
 - Added continuous validation for secrets, scripts and Compose templates.
 - Added security, contribution and roadmap documentation.
 - Added detailed architecture and storage-boundary diagrams.
+- Published a linked roadmap board with initial reliability and documentation
+  issues.
 
 ## 2026-08-27
 

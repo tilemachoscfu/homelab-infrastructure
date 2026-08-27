@@ -31,5 +31,10 @@ jobs:
       - name: Validate Compose templates
         run: |
           for compose_file in stacks/*/compose.yaml; do
-            docker compose --file "$compose_file" config --no-interpolate >/dev/null
+            stack_dir="$(dirname "$compose_file")"
+            touch "$stack_dir/.env"
+            DOCKER_ROOT=/opt/homelab docker compose \
+              --env-file .env.example \
+              --file "$compose_file" \
+              config >/dev/null
           done
