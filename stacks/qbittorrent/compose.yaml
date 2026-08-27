@@ -1,0 +1,77 @@
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - ./gluetun/wg0.conf:/gluetun/wireguard/wg0.conf:ro
+    environment:
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      - TZ=Europe/Athens
+      - FIREWALL_VPN_INPUT_PORTS=14285
+    ports:
+      - "8081:8081"
+      - "5030:5030"
+      - "8265:8265"
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Athens
+      - WEBUI_PORT=8081
+    volumes:
+      - ./qbittorrent:/config
+      - ${MEDIA_ROOT:-/srv/media}:/data
+    restart: unless-stopped
+
+  slskd:
+    image: slskd/slskd:latest
+    container_name: slskd
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    user: "1000:1000"
+    env_file:
+      - ../slskd-soularr/.env
+    environment:
+      - TZ=Europe/Athens
+      - SLSKD_REMOTE_CONFIGURATION=true
+      - SLSKD_DOWNLOADS_DIR=/downloads/complete
+      - SLSKD_INCOMPLETE_DIR=/downloads/incomplete
+    volumes:
+      - ../slskd-soularr/slskd:/app
+      - ${MEDIA_ROOT:-/srv/media}/Downloads/slskd:/downloads
+    restart: unless-stopped
+
+  soularr:
+    image: mrusse08/soularr:latest
+    container_name: soularr
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+      slskd:
+        condition: service_started
+    environment:
+      - TZ=Europe/Athens
+      - SCRIPT_INTERVAL=300
+      - WEBUI_ENABLED=true
+      - WEBUI_PORT=8265
+    user: "1000:1000"
+    volumes:
+      - ${MEDIA_ROOT:-/srv/media}/Downloads/slskd:/downloads
+      - ../slskd-soularr/soularr:/data
+    restart: unless-stopped

@@ -1,0 +1,17 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    user: "1000:1000"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8222:80"
+    environment:
+      DOMAIN: "https://your-hostname.example.invalid"
+      SIGNUPS_ALLOWED: "false"
+      INVITATIONS_ALLOWED: "false"
+      SHOW_PASSWORD_HINT: "false"
+      TZ: Europe/Athens
+    volumes:
+      - ./data:/data
+    mem_limit: 384m

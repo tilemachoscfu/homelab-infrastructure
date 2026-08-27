@@ -1,0 +1,12 @@
+services:
+  kiwix:
+    image: ghcr.io/kiwix/kiwix-serve:latest
+    container_name: kiwix
+    restart: unless-stopped
+    ports:
+      - "8083:8080"
+    command:
+      - wikipedia_el_all_nopic_2026-06.zim
+    volumes:
+      - ${MEDIA_ROOT:-/srv/media}/Kiwix:/data:ro
+    mem_limit: 512m

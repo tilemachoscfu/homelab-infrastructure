@@ -1,0 +1,16 @@
+services:
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8085:8080"
+    environment:
+      COLLECTIONS: crowdsecurity/nginx crowdsecurity/http-cve
+      TZ: Europe/Athens
+    volumes:
+      - ./config:/etc/crowdsec
+      - ./data:/var/lib/crowdsec/data
+      - ./acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+      - ${DOCKER_ROOT:-/opt/homelab}/nginx-proxy-manager/data/logs:/var/log/nginx:ro
+    mem_limit: 768m

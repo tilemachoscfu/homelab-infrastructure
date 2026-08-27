@@ -1,0 +1,17 @@
+services:
+  glances:
+    image: nicolargo/glances:latest-full
+    container_name: glances
+    restart: unless-stopped
+    pid: host
+    network_mode: host
+    read_only: true
+    environment:
+      TZ: Europe/Athens
+      GLANCES_OPT: "-w"
+    volumes:
+      - /:/rootfs:ro
+      - /etc/os-release:/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    tmpfs:
+      - /tmp

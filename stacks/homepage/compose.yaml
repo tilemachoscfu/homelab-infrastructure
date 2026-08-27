@@ -1,0 +1,27 @@
+services:
+  dockerproxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:latest
+    container_name: homepage-dockerproxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: "1"
+      SERVICES: "0"
+      TASKS: "0"
+      POST: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - dockerproxy
+    ports:
+      - "3002:3000"
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: home.home.arpa,${HOMELAB_IP:?Set HOMELAB_IP}:3002
+    volumes:
+      - ./config:/app/config

@@ -1,0 +1,13 @@
+# Changelog
+
+## 2026-08-27
+
+- Documented the existing media, network, monitoring and data stacks.
+- Added Lidarr and Navidrome music automation.
+- Added slskd and Soularr behind Gluetun/AirVPN.
+- Fixed qBittorrent startup ordering so it waits for a healthy VPN.
+- Added Vaultwarden over an approved Tailscale HTTPS endpoint.
+- Corrected Home Assistant reverse-proxy trust settings.
+- Diagnosed the dual-AMD black-screen boot race and prepared a LightDM wait.
+- Set Linux Mint as the primary UEFI boot entry and removed the stale Windows
+  Boot Manager entry.

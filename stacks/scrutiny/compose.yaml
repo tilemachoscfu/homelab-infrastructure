@@ -1,0 +1,22 @@
+services:
+  scrutiny:
+    image: ghcr.io/analogj/scrutiny:latest-omnibus
+    container_name: scrutiny
+    restart: unless-stopped
+    cap_add:
+      - SYS_RAWIO
+      - SYS_ADMIN
+    ports:
+      - "8082:8080"
+    environment:
+      TZ: Europe/Athens
+      COLLECTOR_RUN_STARTUP: "true"
+      COLLECTOR_RUN_STARTUP_SLEEP: "10"
+      COLLECTOR_CRON_SCHEDULE: "0 3 * * *"
+    volumes:
+      - ./config:/opt/scrutiny/config
+      - ./influxdb:/opt/scrutiny/influxdb
+      - /run/udev:/run/udev:ro
+    devices:
+      - /dev/sda:/dev/sda
+      - /dev/nvme0:/dev/nvme0

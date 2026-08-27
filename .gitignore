@@ -1,0 +1,40 @@
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.credentials
+secrets.yaml
+wg0.conf
+
+# Databases, state, logs and generated data
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.log
+*.pid
+*.lock
+data/
+config/
+cache/
+logs/
+backups/
+media/
+downloads/
+pgdata/
+redisdata/
+letsencrypt/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*~
+__pycache__/
+*.pyc
