@@ -15,6 +15,15 @@
 - Enabled automatic Greek subtitle profiles for new movies and series, assigned
   the profile to existing unconfigured movies, and added a tested fallback
   provider for quota resilience.
+- Audited the full media pipeline, verified qBittorrent/Gluetun port alignment
+  and Jellyfin VAAPI acceleration, and retained the known-good performance
+  settings.
+- Quarantined a disguised executable rejected by Sonarr, blocklisted its
+  release, enabled rejected-hash synchronization for all connected Arr apps,
+  and removed stale partial files from the final libraries.
+- Cleaned a completed `missingFiles` torrent record without deleting its
+  successfully imported movie, and added parent-level artwork for multi-disc
+  albums to improve Subsonic client cover handling.
 
 ## 2026-08-27
 
