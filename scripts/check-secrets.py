@@ -68,7 +68,7 @@ def files_to_scan() -> list[Path]:
 
 def main() -> int:
     failures: list[str] = []
-    private_literals = {Path.home().name, socket.gethostname()}
+    private_literals = {str(Path.home()), socket.gethostname()}
     try:
         private_literals.update(subprocess.check_output(["hostname", "-I"], text=True).split())
     except (OSError, subprocess.CalledProcessError):
@@ -85,7 +85,7 @@ def main() -> int:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
-        if any(literal in text for literal in private_literals):
+        if any(literal and literal in text for literal in private_literals):
             failures.append(f"host-specific identifier in: {rel}")
             continue
         for pattern in SECRET_PATTERNS:

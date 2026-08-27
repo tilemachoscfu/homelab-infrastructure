@@ -1,0 +1,35 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Scan for secrets and private files
+        run: ./scripts/check-secrets.py
+
+      - name: Validate Python tools
+        run: python3 -m py_compile scripts/*.py
+
+      - name: Validate shell tools
+        run: bash -n scripts/*.sh
+
+      - name: Validate Compose templates
+        run: |
+          for compose_file in stacks/*/compose.yaml; do
+            docker compose --file "$compose_file" config --no-interpolate >/dev/null
+          done

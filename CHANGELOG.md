@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-27 — Public project foundation
+
+- Expanded the README with architecture, service and safe-use guidance.
+- Added continuous validation for secrets, scripts and Compose templates.
+- Added security, contribution and roadmap documentation.
+- Added detailed architecture and storage-boundary diagrams.
+
 ## 2026-08-27
 
 - Documented the existing media, network, monitoring and data stacks.
