@@ -27,3 +27,4 @@ services:
       - /var/log:/host/var/log:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     mem_limit: 768m
+    cpus: 1.00

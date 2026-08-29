@@ -7,6 +7,10 @@ services:
       - "8083:8080"
     command:
       - wikipedia_el_all_nopic_2026-06.zim
+      - mdwiki_en_all_maxi_2025-11.zim
+      - ifixit_en_all_2025-12.zim
+      - wiktionary_el_all_nopic_2026-07.zim
     volumes:
       - ${MEDIA_ROOT:-/srv/media}/Kiwix:/data:ro
     mem_limit: 512m
+    cpus: 0.50

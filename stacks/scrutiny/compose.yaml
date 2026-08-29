@@ -20,3 +20,5 @@ services:
     devices:
       - /dev/sda:/dev/sda
       - /dev/nvme0:/dev/nvme0
+    mem_limit: 768m
+    cpus: 0.75

@@ -1,6 +1,6 @@
 services:
   lidarr:
-    image: lscr.io/linuxserver/lidarr:latest
+    image: ghcr.io/hotio/lidarr@sha256:ae0b3b14769fdfeb73fe5d9e61ebcda04edf202244bcbd6323d2fe1381154f57
     container_name: lidarr
     environment:
       - PUID=1000
@@ -10,5 +10,7 @@ services:
       - ./config:/config
       - ${MEDIA_ROOT:-/srv/media}:/data
     ports:
-      - "8686:8686"
+      - "${HOMELAB_IP:?Set HOMELAB_IP}:8686:8686"
     restart: unless-stopped
+    mem_limit: 768m
+    cpus: 0.75

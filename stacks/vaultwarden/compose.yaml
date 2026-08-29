@@ -15,3 +15,4 @@ services:
     volumes:
       - ./data:/data
     mem_limit: 384m
+    cpus: 0.25

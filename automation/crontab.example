@@ -1,0 +1,11 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Daily Homelab configuration backup at 03:15 Europe/Athens local time.
+15 3 * * * ${DOCKER_ROOT:-/opt/homelab}/backup/backup-homelab.sh >> ${DOCKER_ROOT:-/opt/homelab}/backup/backup.log 2>&1
+
+# Graceful Homelab shutdown when AC is offline and laptop battery reaches 15%.
+*/2 * * * * ${DOCKER_ROOT:-/opt/homelab}/power/power-failure-guard.sh >> ${DOCKER_ROOT:-/opt/homelab}/power/power.log 2>&1
+
+# Daily Homelab health report to Telegram at 08:30 Europe/Athens local time.
+30 8 * * * ${DOCKER_ROOT:-/opt/homelab}/monitoring/daily-health-report.sh >> ${DOCKER_ROOT:-/opt/homelab}/monitoring/daily-health-report.log 2>&1

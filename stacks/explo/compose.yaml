@@ -1,0 +1,22 @@
+services:
+  explo:
+    image: ghcr.io/lumepart/explo@sha256:5f7bc5a8266fe71a4991d79670bf35506aca5d01e6f08016c717197c09d1cf83
+    container_name: explo
+    restart: unless-stopped
+    ports:
+      - "${HOMELAB_IP:?Set HOMELAB_IP}:7288:7288"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Europe/Athens
+      WEB_UI: "true"
+      EXECUTE_ON_START: "false"
+    volumes:
+      - ./.env:/opt/explo/.env
+      - ./config:/opt/explo/config
+      - ${MEDIA_ROOT:-/srv/media}/Music/Explo:/data
+      - ${MEDIA_ROOT:-/srv/media}/Downloads/slskd/complete:/slskd
+    mem_limit: 768m
+    cpus: 1.00

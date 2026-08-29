@@ -11,3 +11,5 @@ services:
     ports:
       - "9696:9696"
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.75

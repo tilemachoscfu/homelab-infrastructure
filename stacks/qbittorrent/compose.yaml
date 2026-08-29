@@ -1,6 +1,6 @@
 services:
   gluetun:
-    image: qmcgaw/gluetun:latest
+    image: qmcgaw/gluetun@sha256:8e92dcb57ed64b0e4469c933f00ef1e09ee00867fee150e783a95fa6b53effa4
     container_name: gluetun
     cap_add:
       - NET_ADMIN
@@ -12,13 +12,15 @@ services:
       - VPN_SERVICE_PROVIDER=custom
       - VPN_TYPE=wireguard
       - TZ=Europe/Athens
-      - FIREWALL_VPN_INPUT_PORTS=14285
+      - FIREWALL_VPN_INPUT_PORTS=14285,3492
       - FIREWALL_OUTBOUND_SUBNETS=${LAN_SUBNET:?Set LAN_SUBNET}
     ports:
       - "8081:8081"
-      - "5030:5030"
-      - "8265:8265"
+      - "${HOMELAB_IP:?Set HOMELAB_IP}:5030:5030"
+      - "${HOMELAB_IP:?Set HOMELAB_IP}:8265:8265"
     restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.50
 
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
@@ -36,9 +38,11 @@ services:
       - ./qbittorrent:/config
       - ${MEDIA_ROOT:-/srv/media}:/data
     restart: unless-stopped
+    mem_limit: 768m
+    cpus: 1.00
 
   slskd:
-    image: slskd/slskd:latest
+    image: slskd/slskd@sha256:ecd4026d4f8fb504e2cc55323efa2c1f5b56d20d3686b018249cc36b48ea17a6
     container_name: slskd
     network_mode: "service:gluetun"
     depends_on:
@@ -52,13 +56,17 @@ services:
       - SLSKD_REMOTE_CONFIGURATION=true
       - SLSKD_DOWNLOADS_DIR=/downloads/complete
       - SLSKD_INCOMPLETE_DIR=/downloads/incomplete
+      - SLSKD_SLSK_LISTEN_PORT=3492
     volumes:
       - ../slskd-soularr/slskd:/app
       - ${MEDIA_ROOT:-/srv/media}/Downloads/slskd:/downloads
+      - ${MEDIA_ROOT:-/srv/media}/Music:/music:ro
     restart: unless-stopped
+    mem_limit: 768m
+    cpus: 1.00
 
   soularr:
-    image: mrusse08/soularr:latest
+    image: mrusse08/soularr@sha256:9d17bdc35108afd747c4862dc32a0c1cba821638d170e1374188a977ce255c76
     container_name: soularr
     network_mode: "service:gluetun"
     depends_on:
@@ -76,3 +84,5 @@ services:
       - ${MEDIA_ROOT:-/srv/media}/Downloads/slskd:/downloads
       - ../slskd-soularr/soularr:/data
     restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.50

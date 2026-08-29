@@ -1,0 +1,18 @@
+services:
+  aurral:
+    image: ghcr.io/lklynet/aurral@sha256:84b8a0c841d6e1efbc23e86bfe0b35baa21ad1f7ae0e6487742d9a5c283fe55c
+    container_name: aurral
+    restart: unless-stopped
+    ports:
+      - "${HOMELAB_IP:?Set HOMELAB_IP}:3003:3001"
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Europe/Athens
+    volumes:
+      - ./data:/config
+      - ${MEDIA_ROOT:-/srv/media}/Music:/data/Music
+      - ${MEDIA_ROOT:-/srv/media}/Downloads:/data/Downloads
+      - ${MEDIA_ROOT:-/srv/media}/Downloads/aurral:/aurral
+    mem_limit: 768m
+    cpus: 1.00

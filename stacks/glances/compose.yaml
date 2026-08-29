@@ -15,3 +15,5 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     tmpfs:
       - /tmp
+    mem_limit: 512m
+    cpus: 0.50

@@ -8,6 +8,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer-data:/data
+    mem_limit: 384m
+    cpus: 0.50
 
 volumes:
   portainer-data:

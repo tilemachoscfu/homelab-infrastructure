@@ -14,3 +14,4 @@ services:
       - ./acquis.yaml:/etc/crowdsec/acquis.yaml:ro
       - ${DOCKER_ROOT:-/opt/homelab}/nginx-proxy-manager/data/logs:/var/log/nginx:ro
     mem_limit: 768m
+    cpus: 0.50

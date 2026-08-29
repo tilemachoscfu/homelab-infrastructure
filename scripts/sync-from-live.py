@@ -31,12 +31,28 @@ def detected_lan_ip() -> str | None:
         ),
         None,
     )
+
+
+def detected_gateway() -> str | None:
+    try:
+        route = subprocess.check_output(
+            ["ip", "route", "show", "default"], text=True
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    match = re.search(r"\bvia\s+(\S+)", route)
+    return match.group(1) if match else None
+
+
 REPO = Path(__file__).resolve().parents[1]
 OUT = REPO / "stacks"
+AUTOMATION_OUT = REPO / "automation"
 
 STACKS = {
+    "aurral": "compose.yaml",
     "bazarr": "docker-compose.yml",
     "crowdsec": "compose.yaml",
+    "explo": "compose.yaml",
     "glances": "compose.yaml",
     "homeassistant": "compose.yaml",
     "homepage": "compose.yaml",
@@ -57,6 +73,15 @@ STACKS = {
     "vaultwarden": "compose.yaml",
 }
 
+AUTOMATION_FILES = {
+    "crontab.example": LIVE / "monitoring" / "crontab.install",
+    "daily-health-report.sh": LIVE / "monitoring" / "daily-health-report.sh",
+    "install-nightly-maintenance.sh": LIVE
+    / "monitoring"
+    / "install-nightly-maintenance.sh",
+    "nightly-maintenance.sh": LIVE / "monitoring" / "nightly-maintenance.sh",
+}
+
 
 def sanitize(text: str) -> str:
     text = text.replace(LIVE_MEDIA, "${MEDIA_ROOT:-/srv/media}")
@@ -69,6 +94,9 @@ def sanitize(text: str) -> str:
         )
         text = text.replace(live_subnet, "${LAN_SUBNET:?Set LAN_SUBNET}")
         text = text.replace(lan_ip, "${HOMELAB_IP:?Set HOMELAB_IP}")
+    gateway = detected_gateway()
+    if gateway:
+        text = text.replace(gateway, "${LAN_GATEWAY:?Set LAN_GATEWAY}")
     text = text.replace(socket.gethostname(), "homelab-host")
     text = re.sub(
         r'(?mi)^(\s*hostname\s*:\s*).+$',
@@ -107,14 +135,27 @@ def main() -> None:
     for name, compose_name in STACKS.items():
         source = LIVE / name / compose_name
         if not source.is_file():
-            raise SystemExit(f"Missing allowlisted source: {source}")
+            print(f"Skipped missing live stack (kept existing template): {source}")
+            continue
         target_dir = OUT / name
         target_dir.mkdir(parents=True, exist_ok=True)
         (target_dir / "compose.yaml").write_text(
             sanitize(source.read_text(encoding="utf-8")), encoding="utf-8"
         )
 
-    print(f"Exported {len(STACKS)} sanitized stacks to {OUT}")
+    AUTOMATION_OUT.mkdir(parents=True, exist_ok=True)
+    for target_name, source in AUTOMATION_FILES.items():
+        if not source.is_file():
+            raise SystemExit(f"Missing allowlisted automation source: {source}")
+        target = AUTOMATION_OUT / target_name
+        target.write_text(
+            sanitize(source.read_text(encoding="utf-8")), encoding="utf-8"
+        )
+        if source.suffix == ".sh":
+            target.chmod(0o755)
+
+    print(f"Exported sanitized live stacks to {OUT}")
+    print(f"Exported {len(AUTOMATION_FILES)} sanitized automations to {AUTOMATION_OUT}")
 
 
 if __name__ == "__main__":

@@ -10,3 +10,5 @@ services:
     ports:
       - "5055:5055"
     restart: unless-stopped
+    mem_limit: 768m
+    cpus: 0.75

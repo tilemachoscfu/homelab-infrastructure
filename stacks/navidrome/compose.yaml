@@ -1,18 +1,23 @@
 services:
   navidrome:
-    image: deluan/navidrome:latest
+    image: deluan/navidrome@sha256:9012939114fbb1bb641b81cf96dec5ded15f0aafefe8d47a511d7cb919658e40
     container_name: navidrome
     user: "1000:1000"
     restart: unless-stopped
     ports:
-      - "4533:4533"
+      - "${HOMELAB_IP:?Set HOMELAB_IP}:4533:4533"
     environment:
       ND_SCANSCHEDULE: 1h
       ND_LOGLEVEL: info
       ND_SESSIONTIMEOUT: 24h
       ND_ENABLESHARING: "false"
+      ND_ENABLEEXTERNALSERVICES: "true"
+      ND_AGENTS: deezer,lastfm,listenbrainz
+      ND_LISTENBRAINZ_ENABLED: "true"
       TZ: Europe/Athens
     volumes:
       - ./data:/data
       - ${MEDIA_ROOT:-/srv/media}/Music:/music:ro
+      - ${MEDIA_ROOT:-/srv/media}/Downloads/aurral:/aurral:ro
     mem_limit: 512m
+    cpus: 0.50

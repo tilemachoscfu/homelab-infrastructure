@@ -13,3 +13,5 @@ services:
     volumes:
       - ./data:/data
       - ./letsencrypt:/etc/letsencrypt
+    mem_limit: 512m
+    cpus: 0.75
