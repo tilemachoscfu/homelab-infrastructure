@@ -176,6 +176,19 @@ if ((${#failed_units[@]})); then
 fi
 details+=("⚙️ Υπηρεσίες  ·  ${#failed_units[@]} failed")
 
+# A container can recover after the kernel kills a process at its memory
+# limit, leaving Docker healthy by report time. Surface recent OOM kills so
+# transient resource exhaustion is not silently missed.
+mapfile -t oom_processes < <(
+  journalctl --since '24 hours ago' --no-pager _TRANSPORT=kernel 2>/dev/null |
+    sed -nE 's/.*Killed process [0-9]+ \(([^)]+)\).*/\1/p' |
+    sort -u
+)
+if ((${#oom_processes[@]})); then
+  add_warning "OOM τελευταίου 24ώρου: ${oom_processes[*]}"
+fi
+details+=("🧠 Μνήμη  ·  ${#oom_processes[@]} OOM kills / 24ωρο")
+
 if ! systemctl is-active --quiet homelab-display-watchdog.timer; then
   add_warning "Display watchdog timer: ανενεργό"
 fi
