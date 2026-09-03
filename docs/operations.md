@@ -89,6 +89,21 @@ the VPN is healthy, DHT has peers, the client reports `connected`, and an active
 well-seeded torrent reaches a reasonable transfer rate. Avoid speculative
 tuning when those checks already pass.
 
+## AdGuard Home memory headroom
+
+AdGuard Home has exceeded a 512 MiB container limit during routine DNS load,
+even though the host still had several GiB available. Keep its live memory
+limit at 768 MiB with a 1280 MiB memory-plus-swap ceiling. This preserves a
+bounded container while providing enough headroom for filter updates and query
+processing.
+
+After changing the limit, confirm it with `docker inspect`, resolve a public
+hostname through the local resolver, and watch memory usage and kernel OOM
+events. Apply the same values to the Portainer stack definition before the next
+container recreation; a runtime `docker update` survives host reboots but is
+replaced when Portainer recreates the container. To roll back the runtime
+setting, restore the previous 512 MiB memory and 1 GiB memory-plus-swap limits.
+
 ## Jellyfin hardware acceleration
 
 On the AMD APU host, Jellyfin uses VAAPI through the configured DRM render node.
