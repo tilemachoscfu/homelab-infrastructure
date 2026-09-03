@@ -163,11 +163,17 @@ else
   fi
   if [[ ! -s "${backup_path}/SHA256SUMS" ]]; then
     add_warning "Backup ${backup_name}: λείπει SHA256SUMS"
+    backup_integrity="χωρίς checksum"
+  elif (cd "${backup_path}" && sha256sum --quiet -c SHA256SUMS); then
+    backup_integrity="επαληθευμένο"
+  else
+    add_warning "Backup ${backup_name}: αποτυχία checksum"
+    backup_integrity="ΑΠΟΤΥΧΙΑ checksum"
   fi
   if ! tail -20 "${BACKUP_LOG}" 2>/dev/null | grep -Fq "Backup completed: ${backup_path}"; then
     add_warning "Backup ${backup_name}: δεν επιβεβαιώνεται στο log"
   fi
-  details+=("🛡 Backup  ·  ${backup_time} (${backup_age_hours} ώρες πριν)")
+  details+=("🛡 Backup  ·  ${backup_time} (${backup_age_hours} ώρες πριν, ${backup_integrity})")
 fi
 
 mapfile -t failed_units < <(systemctl --failed --no-legend --plain 2>/dev/null | awk '{print $1}')
@@ -175,6 +181,19 @@ if ((${#failed_units[@]})); then
   add_warning "Failed systemd: ${failed_units[*]}"
 fi
 details+=("⚙️ Υπηρεσίες  ·  ${#failed_units[@]} failed")
+
+# A container can recover after the kernel kills a process at its memory
+# limit, leaving Docker healthy by report time. Surface recent OOM kills so
+# transient resource exhaustion is not silently missed.
+mapfile -t oom_processes < <(
+  journalctl --since '24 hours ago' --no-pager _TRANSPORT=kernel 2>/dev/null |
+    sed -nE 's/.*Killed process [0-9]+ \(([^)]+)\).*/\1/p' |
+    sort -u
+)
+if ((${#oom_processes[@]})); then
+  add_warning "OOM τελευταίου 24ώρου: ${oom_processes[*]}"
+fi
+details+=("🧠 Μνήμη  ·  ${#oom_processes[@]} OOM kills / 24ωρο")
 
 if ! systemctl is-active --quiet homelab-display-watchdog.timer; then
   add_warning "Display watchdog timer: ανενεργό"
