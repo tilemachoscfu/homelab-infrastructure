@@ -163,11 +163,17 @@ else
   fi
   if [[ ! -s "${backup_path}/SHA256SUMS" ]]; then
     add_warning "Backup ${backup_name}: λείπει SHA256SUMS"
+    backup_integrity="χωρίς checksum"
+  elif (cd "${backup_path}" && sha256sum --quiet -c SHA256SUMS); then
+    backup_integrity="επαληθευμένο"
+  else
+    add_warning "Backup ${backup_name}: αποτυχία checksum"
+    backup_integrity="ΑΠΟΤΥΧΙΑ checksum"
   fi
   if ! tail -20 "${BACKUP_LOG}" 2>/dev/null | grep -Fq "Backup completed: ${backup_path}"; then
     add_warning "Backup ${backup_name}: δεν επιβεβαιώνεται στο log"
   fi
-  details+=("🛡 Backup  ·  ${backup_time} (${backup_age_hours} ώρες πριν)")
+  details+=("🛡 Backup  ·  ${backup_time} (${backup_age_hours} ώρες πριν, ${backup_integrity})")
 fi
 
 mapfile -t failed_units < <(systemctl --failed --no-legend --plain 2>/dev/null | awk '{print $1}')
