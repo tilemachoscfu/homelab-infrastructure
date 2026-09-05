@@ -5,6 +5,7 @@ umask 077
 
 readonly BACKUP_ROOT="${MEDIA_ROOT:-/srv/media}/HomelabBackups"
 readonly BACKUP_LOG="${DOCKER_ROOT:-/opt/homelab}/backup/backup.log"
+readonly DISK_STATE="${DOCKER_ROOT:-/opt/homelab}/monitoring/.disk-usage-state"
 readonly WATCHDOG_EVENT="/var/lib/homelab-display-watchdog/last-event"
 readonly SCRUTINY_URL="http://127.0.0.1:8082/api/summary"
 readonly HOST_LABEL="HP Homelab · ${HOMELAB_IP:?Set HOMELAB_IP}"
@@ -79,6 +80,26 @@ while read -r filesystem size used available percent mountpoint; do
   fi
 done < <(df -hP -x tmpfs -x devtmpfs -x efivarfs | awk 'NR>1 {print $1,$2,$3,$4,$5,$6}')
 details+=("💾 Δίσκοι  ·  $(join_by '  ·  ' "${disk_summary[@]}")")
+
+# Track HDD growth between reports. A percentage threshold alone can hide a
+# sudden increase until the disk is already close to full.
+current_epoch="$(date +%s)"
+current_hdd_used="$(df -B1 --output=used ${MEDIA_ROOT:-/srv/media} | awk 'NR==2 {print $1}')"
+if [[ -r "${DISK_STATE}" ]]; then
+  read -r previous_epoch previous_hdd_used < "${DISK_STATE}" || true
+  if [[ "${previous_epoch:-}" =~ ^[0-9]+$ && "${previous_hdd_used:-}" =~ ^[0-9]+$ ]] &&
+      ((current_epoch > previous_epoch + 3600)); then
+    growth_gib_day="$(awk -v now="${current_epoch}" -v before="${previous_epoch}" \
+      -v used="${current_hdd_used}" -v old="${previous_hdd_used}" \
+      'BEGIN {printf "%.1f", ((used-old)/1073741824) * 86400/(now-before)}')"
+    details+=("📈 HDD  ·  ${growth_gib_day} GiB/ημέρα")
+    if awk -v growth="${growth_gib_day}" 'BEGIN {exit !(growth >= 10)}'; then
+      add_warning "Ταχεία αύξηση HDD: ${growth_gib_day} GiB/ημέρα"
+    fi
+  fi
+fi
+printf '%s %s\n' "${current_epoch}" "${current_hdd_used}" > "${DISK_STATE}.tmp"
+mv -f "${DISK_STATE}.tmp" "${DISK_STATE}"
 
 # Scrutiny has privileged SMART access. Require fresh data and check drive
 # temperatures. Its JSON contains no credentials, and only a compact summary
