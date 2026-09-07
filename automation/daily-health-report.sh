@@ -98,8 +98,10 @@ if [[ -r "${DISK_STATE}" ]]; then
     fi
   fi
 fi
-printf '%s %s\n' "${current_epoch}" "${current_hdd_used}" > "${DISK_STATE}.tmp"
-mv -f "${DISK_STATE}.tmp" "${DISK_STATE}"
+if [[ "${send_report}" == true ]]; then
+  printf '%s %s\n' "${current_epoch}" "${current_hdd_used}" > "${DISK_STATE}.tmp"
+  mv -f "${DISK_STATE}.tmp" "${DISK_STATE}"
+fi
 
 # Scrutiny has privileged SMART access. Require fresh data and check drive
 # temperatures. Its JSON contains no credentials, and only a compact summary
