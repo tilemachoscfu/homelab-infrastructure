@@ -74,6 +74,7 @@ STACKS = {
 }
 
 AUTOMATION_FILES = {
+    "backup-homelab.sh": LIVE / "backup" / "backup-homelab.sh",
     "crontab.example": LIVE / "monitoring" / "crontab.install",
     "daily-health-report.sh": LIVE / "monitoring" / "daily-health-report.sh",
     "install-nightly-maintenance.sh": LIVE
