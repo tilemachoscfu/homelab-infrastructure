@@ -4,7 +4,7 @@ set -Eeuo pipefail
 export DEBIAN_FRONTEND=noninteractive
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-readonly BACKUP_LOCK="/tmp/homelab-backup.lock"
+readonly BACKUP_LOCK="${DOCKER_ROOT:-/opt/homelab}/backup/.backup.lock"
 readonly LOG_TAG="homelab-nightly-maintenance"
 
 if [[ "${EUID}" -ne 0 ]]; then
