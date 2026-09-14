@@ -148,7 +148,7 @@ fi
 
 # CPU/GPU/NVMe thermal overview from lm-sensors. The highest current reading
 # is used; known bogus critical thresholds do not affect the check.
-max_temp="$(sensors 2>/dev/null | awk '
+max_temp="$(LC_ALL=C sensors 2>/dev/null | LC_ALL=C awk '
   {
     current=$0
     sub(/[[:space:]]*\(.*/, "", current)
@@ -160,9 +160,9 @@ max_temp="$(sensors 2>/dev/null | awk '
   END {printf "%.1f", max}
 ')"
 if [[ "${max_temp}" != "0.0" ]]; then
-  if awk "BEGIN {exit !(${max_temp} >= 85)}"; then
+  if LC_ALL=C awk -v temperature="${max_temp}" 'BEGIN {exit !(temperature >= 85)}'; then
     add_warning "ΚΡΙΣΙΜΗ θερμοκρασία συστήματος: ${max_temp}°C"
-  elif awk "BEGIN {exit !(${max_temp} >= 75)}"; then
+  elif LC_ALL=C awk -v temperature="${max_temp}" 'BEGIN {exit !(temperature >= 75)}'; then
     add_warning "Υψηλή θερμοκρασία συστήματος: ${max_temp}°C"
   fi
   details+=("🌡 Θερμοκρασία  ·  ${max_temp}°C max")
