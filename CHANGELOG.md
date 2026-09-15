@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-15 — Portainer runtime recovery
+
+- Reconciled the live Portainer container with its declared `restart: always`
+  policy after runtime drift left it with restart policy `no` and unavailable
+  following an exit with code 2.
+- Restarted only Portainer and verified its HTTPS system-status endpoint. The
+  Compose file itself was already correct, so no stack definition changed.
+
 ## 2026-08-27 — Public project foundation
 
 - Expanded the README with architecture, service and safe-use guidance.
