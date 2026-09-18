@@ -181,6 +181,8 @@ else
   backup_age_hours="$(( ($(date +%s) - ${backup_epoch%.*}) / 3600 ))"
   backup_name="${backup_path##*/}"
   backup_time="$(date -d "@${backup_epoch%.*}" '+%d/%m %H:%M')"
+  backup_size="$(du -sh -- "${backup_path}" 2>/dev/null | awk '{print $1}')"
+  [[ -n "${backup_size}" ]] || backup_size="άγνωστο μέγεθος"
   if ((backup_age_hours > 30)); then
     add_warning "Backup: τελευταίο πριν ${backup_age_hours} ώρες"
   fi
@@ -196,7 +198,7 @@ else
   if ! tail -20 "${BACKUP_LOG}" 2>/dev/null | grep -Fq "Backup completed: ${backup_path}"; then
     add_warning "Backup ${backup_name}: δεν επιβεβαιώνεται στο log"
   fi
-  details+=("🛡 Backup  ·  ${backup_time} (${backup_age_hours} ώρες πριν, ${backup_integrity})")
+  details+=("🛡 Backup  ·  ${backup_time} · ${backup_size} (${backup_age_hours} ώρες πριν, ${backup_integrity})")
 fi
 
 mapfile -t failed_units < <(systemctl --failed --no-legend --plain 2>/dev/null | awk '{print $1}')
