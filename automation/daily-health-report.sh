@@ -67,11 +67,15 @@ details+=("🐳 Docker  ·  ${running_count}/${total_count} ενεργά")
 
 # Mounted filesystems: warn at 80%, urgent at 90%. Exclude pseudo filesystems.
 disk_summary=()
+hdd_usage_percent=0
 while read -r filesystem size used available percent mountpoint; do
   usage="${percent%%%}"
   case "${mountpoint}" in
     /) disk_summary+=("SSD ${percent} (${available} ελεύθερα)") ;;
-    ${MEDIA_ROOT:-/srv/media}) disk_summary+=("HDD ${percent} (${available} ελεύθερα)") ;;
+    ${MEDIA_ROOT:-/srv/media})
+      hdd_usage_percent="${usage}"
+      disk_summary+=("HDD ${percent} (${available} ελεύθερα)")
+      ;;
   esac
   if ((usage >= 90)); then
     add_warning "ΚΡΙΣΙΜΟ: ${mountpoint} στο ${percent}"
@@ -93,7 +97,8 @@ if [[ -r "${DISK_STATE}" ]]; then
       -v used="${current_hdd_used}" -v old="${previous_hdd_used}" \
       'BEGIN {printf "%.1f", ((used-old)/1073741824) * 86400/(now-before)}')"
     details+=("📈 HDD  ·  ${growth_gib_day} GiB/ημέρα")
-    if awk -v growth="${growth_gib_day}" 'BEGIN {exit !(growth >= 10)}'; then
+    if ((hdd_usage_percent >= 80)) &&
+        awk -v growth="${growth_gib_day}" 'BEGIN {exit !(growth >= 5)}'; then
       add_warning "Ταχεία αύξηση HDD: ${growth_gib_day} GiB/ημέρα"
     fi
   fi
