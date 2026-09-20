@@ -80,7 +80,7 @@ mapfile -t running_containers < <(docker ps --format '{{.Names}}' | sort)
 if ((${#running_containers[@]})); then
   pause_containers "${running_containers[@]}"
 fi
-docker run --rm \
+docker run --rm --read-only \
   -v "${SOURCE_ROOT}:/source:ro" \
   -v "${incomplete_dir}:/backup" \
   "${ALPINE_IMAGE}" \
@@ -93,7 +93,7 @@ compress_archive "${incomplete_dir}/docker-configs.tar"
 # Jellyfin artwork, logs, trickplay previews and its old built-in backups are
 # rebuildable and intentionally omitted. The critical state below is small.
 pause_containers jellyfin
-docker run --rm \
+docker run --rm --read-only \
   -v "${JELLYFIN_CONFIG}:/source:ro" \
   -v "${incomplete_dir}:/backup" \
   "${ALPINE_IMAGE}" \
@@ -122,7 +122,7 @@ declare -A volume_owner=(
 for volume in "${volumes[@]}"; do
   docker volume inspect "${volume}" >/dev/null
   pause_containers "${volume_owner[$volume]}"
-  docker run --rm \
+  docker run --rm --read-only \
     -v "${volume}:/source:ro" \
     -v "${incomplete_dir}:/backup" \
     "${ALPINE_IMAGE}" \
