@@ -74,6 +74,7 @@ touch "${BACKUP_ROOT}/.write-test"
 find "${BACKUP_ROOT}/.write-test" -delete
 
 mapfile -t running_containers < <(docker ps --format '{{.Names}}' | sort)
+mapfile -t all_containers < <(docker ps -a --format '{{.Names}}' | sort)
 
 # Copy bind-mounted application state while it is quiet. Compression happens
 # after unpausing, so this interruption is limited to the raw disk copy.
@@ -131,8 +132,8 @@ for volume in "${volumes[@]}"; do
   compress_archive "${incomplete_dir}/volume-${volume}.tar"
 done
 
-if ((${#running_containers[@]})); then
-  docker inspect "${running_containers[@]}" > "${incomplete_dir}/docker-inspect.json"
+if ((${#all_containers[@]})); then
+  docker inspect "${all_containers[@]}" > "${incomplete_dir}/docker-inspect.json"
 else
   printf '[]\n' > "${incomplete_dir}/docker-inspect.json"
 fi
