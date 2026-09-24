@@ -91,18 +91,19 @@ tuning when those checks already pass.
 
 ## AdGuard Home memory headroom
 
-AdGuard Home has exceeded a 512 MiB container limit during routine DNS load,
-even though the host still had several GiB available. Keep its live memory
-limit at 768 MiB with a 1280 MiB memory-plus-swap ceiling. This preserves a
-bounded container while providing enough headroom for filter updates and query
-processing.
+AdGuard Home exceeded both its original 512 MiB limit and, later, its 768 MiB
+limit during large filter updates, even though the host still had several GiB
+available. Keep its live memory limit at 1 GiB with a 1.5 GiB memory-plus-swap
+ceiling. This preserves a bounded container while providing enough headroom for
+filter updates and query processing.
 
 After changing the limit, confirm it with `docker inspect`, resolve a public
 hostname through the local resolver, and watch memory usage and kernel OOM
 events. Apply the same values to the Portainer stack definition before the next
 container recreation; a runtime `docker update` survives host reboots but is
 replaced when Portainer recreates the container. To roll back the runtime
-setting, restore the previous 512 MiB memory and 1 GiB memory-plus-swap limits.
+setting, restore the previous 768 MiB memory and 1280 MiB memory-plus-swap
+limits.
 
 ## Jellyfin hardware acceleration
 
