@@ -226,6 +226,25 @@ if ((${#oom_processes[@]})); then
 fi
 details+=("🧠 Μνήμη  ·  ${#oom_processes[@]} OOM kills / 24ωρο")
 
+# Media releases delivered as Windows executables are unsafe and cannot be
+# imported. Report only aggregate counts, never release names or paths.
+suspicious_media_downloads=()
+for media_container in sonarr radarr; do
+  if docker inspect "${media_container}" >/dev/null 2>&1; then
+    suspicious_count="$(
+      docker logs --since 24h "${media_container}" 2>&1 |
+        grep -Eic 'Import failed, path .*\.exe([.:[:space:]]|$)' || true
+    )"
+    if ((suspicious_count > 0)); then
+      suspicious_media_downloads+=("${media_container}: ${suspicious_count}")
+    fi
+  fi
+done
+if ((${#suspicious_media_downloads[@]})); then
+  add_warning "Ύποπτα executable media / 24ωρο: $(join_by ', ' "${suspicious_media_downloads[@]}")"
+fi
+details+=("🛡 Media safety  ·  ${#suspicious_media_downloads[@]} services με ύποπτα .exe / 24ωρο")
+
 if ! systemctl is-active --quiet homelab-display-watchdog.timer; then
   add_warning "Display watchdog timer: ανενεργό"
 fi
