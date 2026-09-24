@@ -8,7 +8,8 @@ readonly JELLYFIN_CONFIG="/srv/docker/jellyfin/config"
 readonly BACKUP_MOUNT="${MEDIA_ROOT:-/srv/media}"
 readonly BACKUP_ROOT="${MEDIA_ROOT:-/srv/media}/HomelabBackups"
 readonly RETENTION_DAYS=30
-readonly MIN_FREE_BYTES=$((20 * 1024 * 1024 * 1024))
+readonly MIN_FREE_GIB=100
+readonly MIN_FREE_BYTES=$((MIN_FREE_GIB * 1024 * 1024 * 1024))
 readonly LOCK_FILE="${DOCKER_ROOT:-/opt/homelab}/backup/.backup.lock"
 readonly ALPINE_IMAGE="alpine:3.23"
 
@@ -65,7 +66,7 @@ fi
 
 available_bytes="$(df -B1 --output=avail "${BACKUP_MOUNT}" | awk 'NR==2 {print $1}')"
 if [[ ! "${available_bytes}" =~ ^[0-9]+$ ]] || ((available_bytes < MIN_FREE_BYTES)); then
-  echo "Backup target has less than 20 GiB free; snapshot skipped." >&2
+  echo "Backup target has less than ${MIN_FREE_GIB} GiB free; snapshot skipped." >&2
   exit 1
 fi
 
