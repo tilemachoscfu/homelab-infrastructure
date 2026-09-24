@@ -292,8 +292,24 @@ if [[ "${send_report}" == false ]]; then
   exit 0
 fi
 
+telegram_query="select config from notification where active=1 and config like '%\"type\":\"telegram\"%' order by id limit 1;"
 telegram_config="$(docker exec uptime-kuma sqlite3 /app/data/kuma.db \
-  "select config from notification where active=1 and config like '%\"type\":\"telegram\"%' order by id limit 1;" 2>/dev/null || true)"
+  "${telegram_query}" 2>/dev/null || true)"
+
+# Keep alert delivery available when Uptime Kuma itself is stopped. Its image
+# already contains sqlite3, so mount the existing data volume read-only in an
+# isolated one-shot container instead of requiring the monitoring UI to run.
+if [[ -z "${telegram_config}" ]]; then
+  kuma_image="$(docker inspect --format '{{.Config.Image}}' uptime-kuma 2>/dev/null || true)"
+  kuma_volume="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/app/data"}}{{.Name}}{{end}}{{end}}' \
+    uptime-kuma 2>/dev/null || true)"
+  if [[ -n "${kuma_image}" && -n "${kuma_volume}" ]]; then
+    telegram_config="$(docker run --rm --network none --read-only \
+      --volume "${kuma_volume}:/app/data:ro" --entrypoint sqlite3 \
+      "${kuma_image}" 'file:/app/data/kuma.db?immutable=1' \
+      "${telegram_query}" 2>/dev/null || true)"
+  fi
+fi
 readarray -t telegram_credentials < <(python3 -c '
 import json, sys
 telegram = json.load(sys.stdin)
