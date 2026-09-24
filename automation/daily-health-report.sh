@@ -78,7 +78,8 @@ while read -r filesystem size used available percent mountpoint; do
   elif ((usage >= 80)); then
     add_warning "Χώρος: ${mountpoint} στο ${percent}"
   fi
-done < <(df -hP -x tmpfs -x devtmpfs -x efivarfs | awk 'NR>1 {print $1,$2,$3,$4,$5,$6}')
+done < <(df -hP -x tmpfs -x devtmpfs -x efivarfs -x iso9660 -x squashfs |
+  awk 'NR>1 {print $1,$2,$3,$4,$5,$6}')
 details+=("💾 Δίσκοι  ·  $(join_by '  ·  ' "${disk_summary[@]}")")
 
 # Track HDD growth between reports. A percentage threshold alone can hide a
