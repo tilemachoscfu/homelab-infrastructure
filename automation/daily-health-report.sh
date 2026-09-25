@@ -245,6 +245,17 @@ if ((${#suspicious_media_downloads[@]})); then
 fi
 details+=("🛡 Media safety  ·  ${#suspicious_media_downloads[@]} services με ύποπτα .exe / 24ωρο")
 
+# A missing Bluetooth adapter can leave Home Assistant healthy at the HTTP
+# layer while Bluetooth integrations repeatedly fail. Report only the count.
+bluetooth_adapter_failures="$(
+  docker logs --since 24h homeassistant 2>&1 |
+    grep -Ec 'ScannerStartError:.*adapter .* not found' || true
+)"
+if ((bluetooth_adapter_failures > 0)); then
+  add_warning "Home Assistant Bluetooth: ${bluetooth_adapter_failures} αποτυχίες adapter / 24ωρο"
+fi
+details+=("📶 Bluetooth  ·  ${bluetooth_adapter_failures} adapter failures / 24ωρο")
+
 if ! systemctl is-active --quiet homelab-display-watchdog.timer; then
   add_warning "Display watchdog timer: ανενεργό"
 fi
