@@ -229,21 +229,27 @@ details+=("🧠 Μνήμη  ·  ${#oom_processes[@]} OOM kills / 24ωρο")
 # Media releases delivered as Windows executables are unsafe and cannot be
 # imported. Report only aggregate counts, never release names or paths.
 suspicious_media_downloads=()
+media_log_failures=()
 for media_container in sonarr radarr; do
-  if docker inspect "${media_container}" >/dev/null 2>&1; then
+  if media_logs="$(timeout 15 docker logs --since 24h "${media_container}" 2>&1)"; then
     suspicious_count="$(
-      docker logs --since 24h "${media_container}" 2>&1 |
-        grep -Eic 'Import failed, path .*\.exe([.:[:space:]]|$)' || true
+      grep -Eic 'Import failed, path .*\.exe([.:[:space:]]|$)' <<< "${media_logs}" || true
     )"
     if ((suspicious_count > 0)); then
       suspicious_media_downloads+=("${media_container}: ${suspicious_count}")
     fi
+  else
+    media_log_failures+=("${media_container}")
   fi
 done
+unset media_logs
+if ((${#media_log_failures[@]})); then
+  add_warning "Media safety: αδυναμία ανάγνωσης logs: ${media_log_failures[*]}"
+fi
 if ((${#suspicious_media_downloads[@]})); then
   add_warning "Ύποπτα executable media / 24ωρο: $(join_by ', ' "${suspicious_media_downloads[@]}")"
 fi
-details+=("🛡 Media safety  ·  ${#suspicious_media_downloads[@]} services με ύποπτα .exe / 24ωρο")
+details+=("🛡 Media safety  ·  ${#suspicious_media_downloads[@]} services με ύποπτα .exe / 24ωρο · ${#media_log_failures[@]} άγνωστα")
 
 # A missing Bluetooth adapter can leave Home Assistant healthy at the HTTP
 # layer while Bluetooth integrations repeatedly fail. Report only the count.
