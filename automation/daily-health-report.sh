@@ -65,6 +65,11 @@ if ((${#unhealthy_containers[@]})); then
 fi
 details+=("🐳 Docker  ·  ${running_count}/${total_count} ενεργά")
 
+# df omits absent mounts; explicitly check the required media storage first.
+if ! mountpoint -q /srv/storage; then
+  add_warning "ΚΡΙΣΙΜΟ: το /srv/storage δεν είναι προσαρτημένο"
+fi
+
 # Mounted filesystems: warn at 80%, urgent at 90%. Exclude pseudo filesystems.
 disk_summary=()
 hdd_usage_percent=0
