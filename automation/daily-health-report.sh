@@ -192,7 +192,10 @@ else
   backup_age_hours="$(( ($(date +%s) - ${backup_epoch%.*}) / 3600 ))"
   backup_name="${backup_path##*/}"
   backup_time="$(date -d "@${backup_epoch%.*}" '+%d/%m %H:%M')"
-  backup_size="$(du -sh -- "${backup_path}" 2>/dev/null | awk '{print $1}')"
+  if ! backup_size="$(du -sh -- "${backup_path}" 2>/dev/null | awk '{print $1}')"; then
+    backup_size="άγνωστο μέγεθος"
+    add_warning "Backup: αδυναμία μέτρησης μεγέθους"
+  fi
   [[ -n "${backup_size}" ]] || backup_size="άγνωστο μέγεθος"
   if ((backup_age_hours > 30)); then
     add_warning "Backup: τελευταίο πριν ${backup_age_hours} ώρες"
