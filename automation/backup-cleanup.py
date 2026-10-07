@@ -116,6 +116,23 @@ def services_from_inspect(data):
     return sorted(names)
 
 
+def binding_versions(data):
+    """A changed mount must never supersede the old mount's last restore set.
+
+    Hash stored metadata only; never inspect the actual bind/volume source.
+    This also protects a service's old data when a later configuration moves
+    its state outside the producer's audited source tree.
+    """
+    result = {}
+    for record in json.loads(data):
+        mounts = [{key: m.get(key) for key in ("Type", "Source", "Destination", "RW")}
+                  for m in record.get("Mounts", [])]
+        encoded = json.dumps(sorted(mounts, key=lambda m: json.dumps(m, sort_keys=True)),
+                             sort_keys=True).encode()
+        result[record["Name"].removeprefix("/")] = hashlib.sha256(encoded).hexdigest()
+    return result
+
+
 def marker_services(data):
     marker = json.loads(data)
     if (marker.get("protocol") != "homelab-full-v1"
@@ -165,6 +182,7 @@ def verify_snapshot(rootfd, name, zone):
         if signature(os.fstat(fd)) != ds or set(os.listdir(fd)) != files:
             raise Unsafe("Snapshot directory changed during verification")
         return {"name": name, "timestamp": stamp.isoformat(), "services": services,
+                "bindings": binding_versions(inventory),
                 "files": identities, "directory": ds, "bytes": logical,
                 "allocated_bytes": allocated, "kind": "snapshot"}
     finally:
@@ -244,6 +262,12 @@ def retention(records, now):
         newest = service_records[0]
         anchors[service] = newest["name"]
         reasons[newest["name"]].add(f"latest:{service}")
+        versions = {}
+        for r in service_records:
+            version = r.get("bindings", {}).get(service, "unspecified")
+            versions.setdefault(version, r)
+        for version, r in versions.items():
+            reasons[r["name"]].add(f"last-mount-version:{service}:{version[:12]}")
         for r in service_records:
             stamp = datetime.fromisoformat(r["timestamp"])
             if stamp >= now - timedelta(days=7):
@@ -304,7 +328,7 @@ def build_plan(config, now, verbose=False, verified_plan=None):
     cache = {}
     if verified_plan is not None:
         age = now - datetime.fromisoformat(verified_plan["timestamp"])
-        if (verified_plan.get("version") != 1 or verified_plan["root"] != config["backup_root"]
+        if (verified_plan.get("version") not in {1, 2} or verified_plan["root"] != config["backup_root"]
                 or tuple(verified_plan["root_identity"]) != tuple(root_identity)
                 or age < timedelta(0) or age > timedelta(hours=1)):
             raise Unsafe("Verified dry-run cache is stale or belongs to a different root")
@@ -326,6 +350,14 @@ def build_plan(config, now, verbose=False, verified_plan=None):
                     # type, links, size and complete tree membership must match.
                     assert_unchanged(rootfd, cache[name])
                     record = cache[name]
+                    # Enrich an earlier verified preview with immutable mount
+                    # metadata without reading any live application state.
+                    cached_fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | NOFOLLOW, dir_fd=rootfd)
+                    try:
+                        inventory, _ = read_file(cached_fd, "docker-inspect.json", max_bytes=16 * 1024 * 1024)
+                        record = {**record, "bindings": binding_versions(inventory)}
+                    finally:
+                        os.close(cached_fd)
                     if verbose:
                         print(f"Verified identities unchanged: {name}", flush=True)
                 else:
@@ -359,7 +391,7 @@ def build_plan(config, now, verbose=False, verified_plan=None):
     if not records:
         errors.append("No complete checksum-verified restore points; deletion disabled")
         selected = []
-    return {"version": 1, "timestamp": now.isoformat(), "root": config["backup_root"],
+    return {"version": 2, "timestamp": now.isoformat(), "root": config["backup_root"],
             "root_identity": root_identity, "filesystem_before": before,
             "selected": selected, "retained": retained, "anchors": anchors,
             "protected": protected, "errors": errors,
@@ -452,6 +484,11 @@ def execute(config, plan, log):
                         affected = set()
                         for service in record["services"]:
                             anchor = retained.get(plan["anchors"].get(service))
+                            if record["kind"] == "snapshot":
+                                same_binding = [r for r in retained.values()
+                                                if service in r["services"] and
+                                                r["bindings"][service] == record["bindings"][service]]
+                                anchor = max(same_binding, key=lambda r: r["timestamp"]) if same_binding else None
                             if anchor is None or anchor["name"] == record["name"]:
                                 raise Unsafe(f"No protected valid restore point for {service}")
                             affected.add(anchor["name"])

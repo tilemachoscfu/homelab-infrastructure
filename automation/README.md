@@ -35,6 +35,10 @@ is outside the producer's source root. It is never inspected by cleanup, and
 its manual rollback backups remain protected. Audited coverage gaps belong in
 the private policy's `coverage_warnings`; these keep the storage health status
 at WARNING even when filesystem pressure falls below 80%.
+The last verified set for each distinct service mount configuration is also
+protected, regardless of age. A newer snapshot with different mount metadata
+cannot replace the old mount's restore point. Mount versions are hashes of
+stored inventory metadata; live bind sources and volumes are never inspected.
 
 Retention is applied separately to every service in the snapshot inventory:
 all snapshots within the rolling last seven days (inclusive), the newest in

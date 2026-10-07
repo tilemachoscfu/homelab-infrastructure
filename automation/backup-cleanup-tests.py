@@ -327,6 +327,15 @@ class SafetyTests(unittest.TestCase):
         self.assertEqual(result["status"], "WARNING")
         self.assertIn(self.config["coverage_warnings"][0], result["text"])
 
+    def test_changed_service_mount_preserves_old_versions_last_backup(self):
+        old = record(NOW - timedelta(days=500))
+        new = record(NOW)
+        old["bindings"] = {"app": "old-source"}
+        new["bindings"] = {"app": "new-source"}
+        reasons, _ = c.retention([old, new], NOW)
+        self.assertTrue(reasons[old["name"]])
+        self.assertTrue(any(r.startswith("last-mount-version:") for r in reasons[old["name"]]))
+
 
 if __name__ == "__main__":
     unittest.main()
