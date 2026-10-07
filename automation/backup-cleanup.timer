@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily homelab backup retention before the health report
+
+[Timer]
+OnCalendar=*-*-* 06:00:00 Europe/Athens
+Persistent=true
+AccuracySec=1min
+Unit=backup-cleanup.service
+
+[Install]
+WantedBy=timers.target

@@ -75,6 +75,9 @@ STACKS = {
 
 AUTOMATION_FILES = {
     "backup-homelab.sh": LIVE / "backup" / "backup-homelab.sh",
+    "backup-cleanup.py": LIVE / "backup" / "backup-cleanup.py",
+    "backup-cleanup.service": Path.home() / ".config/systemd/user/backup-cleanup.service",
+    "backup-cleanup.timer": Path.home() / ".config/systemd/user/backup-cleanup.timer",
     "crontab.example": LIVE / "monitoring" / "crontab.install",
     "daily-health-report.sh": LIVE / "monitoring" / "daily-health-report.sh",
     "install-nightly-maintenance.sh": LIVE

@@ -1,0 +1,15 @@
+[Unit]
+Description=Conservative checksum-verified homelab backup retention
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/docker/backup/backup-cleanup.py --execute --verbose
+Nice=19
+IOSchedulingClass=idle
+UMask=0077
+NoNewPrivileges=true
+RestrictSUIDSGID=true
+LockPersonality=true
+TimeoutStartSec=2h
+StandardOutput=journal
+StandardError=journal

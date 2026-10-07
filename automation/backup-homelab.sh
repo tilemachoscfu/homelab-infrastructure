@@ -7,7 +7,6 @@ readonly SOURCE_ROOT="${DOCKER_ROOT:-/opt/homelab}"
 readonly JELLYFIN_CONFIG="/srv/docker/jellyfin/config"
 readonly BACKUP_MOUNT="${MEDIA_ROOT:-/srv/media}"
 readonly BACKUP_ROOT="${MEDIA_ROOT:-/srv/media}/HomelabBackups"
-readonly RETENTION_DAYS=30
 readonly MIN_FREE_GIB=100
 readonly MIN_FREE_BYTES=$((MIN_FREE_GIB * 1024 * 1024 * 1024))
 readonly LOCK_FILE="${DOCKER_ROOT:-/opt/homelab}/backup/.backup.lock"
@@ -29,10 +28,7 @@ cleanup() {
   for container in "${paused_containers[@]}"; do
     docker unpause "${container}" >/dev/null 2>&1 || true
   done
-  if [[ -d "${incomplete_dir}" ]]; then
-    find "${incomplete_dir}" -mindepth 1 -delete 2>/dev/null || true
-    rmdir "${incomplete_dir}" 2>/dev/null || true
-  fi
+  # Preserve incomplete snapshots for inspection and conservative cleanup.
 }
 trap cleanup EXIT INT TERM
 
@@ -77,6 +73,13 @@ find "${BACKUP_ROOT}/.write-test" -delete
 mapfile -t running_containers < <(docker ps --format '{{.Names}}' | sort)
 mapfile -t all_containers < <(docker ps -a --format '{{.Names}}' | sort)
 
+# Explicitly identify temporary artifacts for critical-pressure cleanup. Only
+# a newer verified backup for every service permits their eventual removal.
+python3 - "${all_containers[@]}" > "${incomplete_dir}/.cleanup-disposable.json" <<'PYMARKER'
+import json, sys
+print(json.dumps({"protocol": "homelab-full-v1", "disposable": True, "services": sys.argv[1:]}))
+PYMARKER
+
 # Copy bind-mounted application state while it is quiet. Compression happens
 # after unpausing, so this interruption is limited to the raw disk copy.
 if ((${#running_containers[@]})); then
@@ -88,6 +91,8 @@ docker run --rm --read-only \
   "${ALPINE_IMAGE}" \
   tar --exclude='./qbittorrent/qbittorrent/qBittorrent/ipc-socket' \
       --exclude='./backup/backup.log' \
+      --exclude='./ai/data/ollama/models' \
+      --exclude='./ai/data/open-webui/cache' \
       -cf /backup/docker-configs.tar -C /source .
 unpause_containers
 compress_archive "${incomplete_dir}/docker-configs.tar"
@@ -143,6 +148,8 @@ docker volume ls > "${incomplete_dir}/docker-volumes.txt"
 
 cat > "${incomplete_dir}/CONTENTS.txt" <<'CONTENTS'
 docker-configs.tar.gz: ${DOCKER_ROOT:-/opt/homelab}, excluding runtime socket/log
+AI model weights and rebuildable Open WebUI caches are intentionally excluded;
+restore qwen3.5:4b with Ollama and recreate homelab-admin from its Modelfile.
 jellyfin-critical.tar.gz: database, settings, plugins, collections, playlists and subtitles
 volume-*.tar.gz: AdGuard Home, Portainer and Uptime Kuma named volumes
 
@@ -152,16 +159,12 @@ CONTENTS
 
 (
   cd "${incomplete_dir}"
-  sha256sum ./*.tar.gz CONTENTS.txt docker-inspect.json docker-images.txt docker-volumes.txt > SHA256SUMS
+  sha256sum ./*.tar.gz CONTENTS.txt docker-inspect.json docker-images.txt docker-volumes.txt .cleanup-disposable.json > SHA256SUMS
 )
 
 mv "${incomplete_dir}" "${snapshot_dir}"
 
-find "${BACKUP_ROOT}" \
-  -mindepth 1 -maxdepth 1 -type d \
-  -name '20??-??-??T??????' -mtime "+${RETENTION_DAYS}" \
-  -exec find '{}' -mindepth 1 -delete ';' \
-  -exec rmdir '{}' ';'
+# Retention belongs to the checksum-verified backup-cleanup systemd timer.
 
 trap - EXIT INT TERM
 echo "Backup completed: ${snapshot_dir}"

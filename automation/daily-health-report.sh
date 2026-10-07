@@ -138,8 +138,12 @@ details+=("💾 Δίσκοι  ·  $(join_by '  ·  ' "${disk_summary[@]}")")
 # Track HDD growth between reports. A percentage threshold alone can hide a
 # sudden increase until the disk is already close to full.
 current_epoch="$(date +%s)"
-current_hdd_used="$(df -B1 --output=used ${MEDIA_ROOT:-/srv/media} | awk 'NR==2 {print $1}')"
-if [[ -r "${DISK_STATE}" ]]; then
+if ! current_hdd_used="$(df -B1 --output=used "${MEDIA_ROOT:-/srv/media}" 2>/dev/null | awk 'NR==2 {print $1}')" ||
+    [[ ! "${current_hdd_used}" =~ ^[0-9]+$ ]]; then
+  current_hdd_used=""
+  add_warning "HDD usage unavailable; disk growth state preserved"
+fi
+if [[ "${current_hdd_used}" =~ ^[0-9]+$ && -r "${DISK_STATE}" ]]; then
   read -r previous_epoch previous_hdd_used < "${DISK_STATE}" || true
   if [[ "${previous_epoch:-}" =~ ^[0-9]+$ && "${previous_hdd_used:-}" =~ ^[0-9]+$ ]] &&
       ((current_epoch > previous_epoch + 3600)); then
@@ -153,7 +157,7 @@ if [[ -r "${DISK_STATE}" ]]; then
     fi
   fi
 fi
-if [[ "${send_report}" == true ]]; then
+if [[ "${send_report}" == true && "${current_hdd_used}" =~ ^[0-9]+$ ]]; then
   printf '%s %s\n' "${current_epoch}" "${current_hdd_used}" > "${DISK_STATE}.tmp"
   mv -f "${DISK_STATE}.tmp" "${DISK_STATE}"
 fi
@@ -258,6 +262,37 @@ else
   fi
   details+=("🛡 Backup  ·  ${backup_time} · ${backup_size} (${backup_age_hours} ώρες πριν, ${backup_integrity})")
 fi
+
+# Backup cleanup reports current filesystem usage and persistent run status.
+# Cron lacks the desktop session environment. The lingering user manager's
+# runtime path is derived from the actual uid, not from an interactive login.
+backup_systemctl() {
+  XDG_RUNTIME_DIR="/run/user/$(id -u)" systemctl --user "$@"
+}
+# Never execute cleanup from the reporting path or send a validation preview.
+backup_storage_json="$(python3 "${DOCKER_ROOT:-/opt/homelab}/backup/backup-cleanup.py" --health 2>/dev/null || true)"
+if [[ -n "${backup_storage_json}" ]]; then
+  backup_storage_text="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["text"])' <<< "${backup_storage_json}" 2>/dev/null || true)"
+  backup_storage_status="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<< "${backup_storage_json}" 2>/dev/null || true)"
+else
+  backup_storage_text=""
+  backup_storage_status=""
+fi
+if [[ -z "${backup_storage_text}" ]]; then
+  backup_storage_text=$'BACKUP STORAGE\nStatus: WARNING\nReason: cleanup health data unavailable'
+  add_warning "Backup cleanup: health data unavailable"
+elif [[ "${backup_storage_status}" != "HEALTHY" ]]; then
+  add_warning "${backup_storage_text}"
+fi
+details+=("${backup_storage_text}")
+if ! backup_systemctl is-enabled --quiet backup-cleanup.timer ||
+    ! backup_systemctl is-active --quiet backup-cleanup.timer; then
+  add_warning "Backup cleanup: daily timer disabled or inactive"
+fi
+if backup_systemctl is-failed --quiet backup-cleanup.service; then
+  add_warning "Backup cleanup: systemd service failed"
+fi
+unset backup_storage_json backup_storage_text backup_storage_status
 
 mapfile -t failed_units < <(systemctl --failed --no-legend --plain 2>/dev/null | awk '{print $1}')
 if ((${#failed_units[@]})); then
