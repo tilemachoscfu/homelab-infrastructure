@@ -100,6 +100,23 @@ def sanitize(text: str) -> str:
         text = text.replace(gateway, "${LAN_GATEWAY:?Set LAN_GATEWAY}")
     text = text.replace(socket.gethostname(), "homelab-host")
     text = re.sub(
+        r"(?m)^readonly MIGRATION_HOST=.*$",
+        'readonly MIGRATION_HOST="${INFRASTRUCTURE_SSH_HOST:?Set INFRASTRUCTURE_SSH_HOST}"',
+        text,
+    )
+    # Stable disk mappings belong in the live stack; hardware identifiers do not
+    # belong in the public template. Keep one required variable per device alias.
+    text = re.sub(
+        r"(?m)^(\s*-\s*)/dev/disk/by-id/[^:\s]+(:/dev/([A-Za-z0-9]+)\s*)$",
+        lambda match: (
+            match.group(1)
+            + "${SMART_DEVICE_" + match.group(3).upper()
+            + ":?Set SMART_DEVICE_" + match.group(3).upper() + "}"
+            + match.group(2)
+        ),
+        text,
+    )
+    text = re.sub(
         r'(?mi)^(\s*hostname\s*:\s*).+$',
         r'\1homelab-host',
         text,

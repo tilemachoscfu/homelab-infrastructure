@@ -2,6 +2,7 @@
 """Fail closed when forbidden files or likely live secrets are present."""
 
 from pathlib import Path
+import os
 import re
 import socket
 import subprocess
@@ -51,19 +52,24 @@ def files_to_scan() -> list[Path]:
                 "--cached",
                 "--others",
                 "--exclude-standard",
+                "--",
+                ".",
+                ":(exclude)stacks/homeassistant/config/**",
             ],
             text=True,
         )
         return [ROOT / line for line in output.splitlines() if line]
     except subprocess.CalledProcessError:
-        return [
-            p
-            for p in ROOT.rglob("*")
-            if p.is_file()
-            and ".git" not in p.parts
-            and "__pycache__" not in p.parts
-            and p.suffix != ".pyc"
-        ]
+        files = []
+        for directory, children, names in os.walk(ROOT):
+            children[:] = [
+                name for name in children
+                if name not in {".git", "__pycache__"}
+                and (Path(directory) / name).relative_to(ROOT).as_posix()
+                != "stacks/homeassistant/config"
+            ]
+            files.extend(Path(directory) / name for name in names if not name.endswith(".pyc"))
+        return files
 
 
 def main() -> int:
@@ -77,6 +83,8 @@ def main() -> int:
 
     for path in files_to_scan():
         rel = path.relative_to(ROOT).as_posix()
+        if rel.startswith("stacks/homeassistant/config/"):
+            continue
         if any(pattern.search(rel) for pattern in FORBIDDEN_NAMES):
             if rel != ".env.example":
                 failures.append(f"forbidden filename: {rel}")

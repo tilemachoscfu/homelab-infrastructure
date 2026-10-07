@@ -18,7 +18,8 @@ services:
       - ./influxdb:/opt/scrutiny/influxdb
       - /run/udev:/run/udev:ro
     devices:
-      - /dev/sda:/dev/sda
+      - ${SMART_DEVICE_SDA:?Set SMART_DEVICE_SDA}:/dev/sda
       - /dev/nvme0:/dev/nvme0
+      - ${SMART_DEVICE_SDB:?Set SMART_DEVICE_SDB}:/dev/sdb
     mem_limit: 768m
     cpus: 0.75

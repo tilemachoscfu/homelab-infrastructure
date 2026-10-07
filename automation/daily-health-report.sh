@@ -43,13 +43,30 @@ join_by() {
   printf '%s' "${joined}"
 }
 
-# Docker: anything not running is urgent; explicit unhealthy/restarting states
-# are called out separately. Containers without a Docker healthcheck are still
-# considered running, not unhealthy.
-mapfile -t stopped_containers < <(
+# Migration was verified against the destination and its retained migration
+# report. Source containers are retained for rollback; never start them here.
+readonly MIGRATION_HOST="${INFRASTRUCTURE_SSH_HOST:?Set INFRASTRUCTURE_SSH_HOST}"
+readonly -a migrated_containers=(
+  crowdsec jellyseerr nginx-proxy-manager portainer uptime-kuma vaultwarden
+)
+declare -A intentional_stops=([morris-probe]="completed diagnostic probe")
+for name in "${migrated_containers[@]}"; do
+  intentional_stops["${name}"]="migrated to infrastructure host"
+done
+
+stopped_containers=()
+intentional_stopped_count=0
+while IFS='|' read -r name status; do
+  [[ -z "${name}" ]] && continue
+  if [[ -n "${intentional_stops[${name}]:-}" ]]; then
+    ((intentional_stopped_count += 1))
+  else
+    stopped_containers+=("${name} (${status})")
+  fi
+done < <(
   docker ps -a --filter status=created --filter status=exited \
     --filter status=dead --filter status=removing \
-    --format '{{.Names}} ({{.Status}})' | sort
+    --format '{{.Names}}|{{.Status}}' | sort
 )
 mapfile -t unhealthy_containers < <(
   docker ps -a --format '{{.Names}}|{{.Status}}' |
@@ -63,7 +80,56 @@ fi
 if ((${#unhealthy_containers[@]})); then
   add_warning "Docker unhealthy: ${unhealthy_containers[*]}"
 fi
-details+=("🐳 Docker  ·  ${running_count}/${total_count} ενεργά")
+details+=("🐳 Docker  ·  ${running_count}/${total_count} ενεργά · ${intentional_stopped_count} σκόπιμα σταματημένα")
+
+# Check every migrated destination each run, so an unavailable replacement still
+# creates an alert instead of being hidden by the intentional source stop.
+migration_status="$(timeout 12 ssh -T -o BatchMode=yes -o ConnectTimeout=5 \
+  -o ConnectionAttempts=1 -o StrictHostKeyChecking=yes "${MIGRATION_HOST}" \
+  "sudo -n docker ps -a --format '{{.Names}}|{{.Status}}'" 2>/dev/null || true)"
+migrated_healthy_count=0
+if [[ -z "${migration_status}" ]]; then
+  add_warning "Μεταφερμένες υπηρεσίες: δεν ήταν δυνατός ο έλεγχος του κεντρικού κόμβου"
+else
+  declare -A destination_states=()
+  while IFS='|' read -r name status; do
+    [[ -z "${name}" ]] && continue
+    destination_states["${name}"]="${status}"
+  done <<< "${migration_status}"
+  for name in "${migrated_containers[@]}"; do
+    status="${destination_states[${name}]:-missing}"
+    if [[ "${status}" == Up* && "${status}" != *unhealthy* && "${status}" != *"health: starting"* ]]; then
+      ((migrated_healthy_count += 1))
+    else
+      add_warning "Μεταφερμένη υπηρεσία ${name}: ${status} στον κεντρικό κόμβο"
+    fi
+  done
+fi
+details+=("🔀 Μεταφερμένες υπηρεσίες  ·  ${migrated_healthy_count}/${#migrated_containers[@]} διαθέσιμες στον κεντρικό κόμβο")
+unset migration_status destination_states
+
+# Local AI services: verify the UI, private search backend and Computer UI
+# without loading the language model into RAM. Ollama's list is local metadata.
+ai_models="$(
+  docker exec ollama ollama list 2>/dev/null |
+    awk 'NR>1 {print $1}' |
+    paste -sd ', ' - || true
+)"
+[[ -n "${ai_models}" ]] || ai_models="κανένα"
+ai_failures=()
+curl -fsS --max-time 5 http://${HOMELAB_IP:?Set HOMELAB_IP}:3005/health >/dev/null 2>&1 || ai_failures+=("Open WebUI")
+curl -fsS --max-time 5 http://${HOMELAB_IP:?Set HOMELAB_IP}:3006/health >/dev/null 2>&1 || ai_failures+=("AI Computer")
+if ! docker exec open-webui curl -fsS --max-time 8 \
+  'http://searxng:8080/search?q=healthcheck&format=json' >/dev/null 2>&1; then
+  ai_failures+=("SearXNG")
+fi
+if ((${#ai_failures[@]})); then
+  add_warning "Τοπικό AI: ${ai_failures[*]} δεν απαντά"
+  ai_health="πρόβλημα: ${ai_failures[*]}"
+else
+  ai_health="όλα διαθέσιμα"
+fi
+details+=("🤖 AI  ·  ${ai_health} · ${ai_models}")
 
 # df omits absent mounts; explicitly check the required media storage first.
 if ! mountpoint -q /srv/storage; then
@@ -77,6 +143,7 @@ while read -r filesystem size used available percent mountpoint; do
   usage="${percent%%%}"
   case "${mountpoint}" in
     /) disk_summary+=("SSD ${percent} (${available} ελεύθερα)") ;;
+    /srv/storage) disk_summary+=("Storage ${percent} (${available} ελεύθερα)") ;;
     ${MEDIA_ROOT:-/srv/media})
       hdd_usage_percent="${usage}"
       disk_summary+=("HDD ${percent} (${available} ελεύθερα)")
@@ -171,9 +238,9 @@ max_temp="$(LC_ALL=C sensors 2>/dev/null | LC_ALL=C awk '
   END {printf "%.1f", max}
 ')"
 if [[ "${max_temp}" != "0.0" ]]; then
-  if LC_ALL=C awk -v temperature="${max_temp}" 'BEGIN {exit !(temperature >= 85)}'; then
+if LC_ALL=C awk -v temperature="${max_temp}" 'BEGIN {exit !(temperature >= 85)}'; then
     add_warning "ΚΡΙΣΙΜΗ θερμοκρασία συστήματος: ${max_temp}°C"
-  elif LC_ALL=C awk -v temperature="${max_temp}" 'BEGIN {exit !(temperature >= 75)}'; then
+elif LC_ALL=C awk -v temperature="${max_temp}" 'BEGIN {exit !(temperature >= 75)}'; then
     add_warning "Υψηλή θερμοκρασία συστήματος: ${max_temp}°C"
   fi
   details+=("🌡 Θερμοκρασία  ·  ${max_temp}°C max")
