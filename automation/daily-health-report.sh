@@ -108,29 +108,6 @@ fi
 details+=("🔀 Μεταφερμένες υπηρεσίες  ·  ${migrated_healthy_count}/${#migrated_containers[@]} διαθέσιμες στον κεντρικό κόμβο")
 unset migration_status destination_states
 
-# Local AI services: verify the UI, private search backend and Computer UI
-# without loading the language model into RAM. Ollama's list is local metadata.
-ai_models="$(
-  docker exec ollama ollama list 2>/dev/null |
-    awk 'NR>1 {print $1}' |
-    paste -sd ', ' - || true
-)"
-[[ -n "${ai_models}" ]] || ai_models="κανένα"
-ai_failures=()
-curl -fsS --max-time 5 http://${HOMELAB_IP:?Set HOMELAB_IP}:3005/health >/dev/null 2>&1 || ai_failures+=("Open WebUI")
-curl -fsS --max-time 5 http://${HOMELAB_IP:?Set HOMELAB_IP}:3006/health >/dev/null 2>&1 || ai_failures+=("AI Computer")
-if ! docker exec open-webui curl -fsS --max-time 8 \
-  'http://searxng:8080/search?q=healthcheck&format=json' >/dev/null 2>&1; then
-  ai_failures+=("SearXNG")
-fi
-if ((${#ai_failures[@]})); then
-  add_warning "Τοπικό AI: ${ai_failures[*]} δεν απαντά"
-  ai_health="πρόβλημα: ${ai_failures[*]}"
-else
-  ai_health="όλα διαθέσιμα"
-fi
-details+=("🤖 AI  ·  ${ai_health} · ${ai_models}")
-
 # df omits absent mounts; explicitly check the required media storage first.
 if ! mountpoint -q /srv/storage; then
   add_warning "ΚΡΙΣΙΜΟ: το /srv/storage δεν είναι προσαρτημένο"
