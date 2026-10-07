@@ -75,10 +75,14 @@ mapfile -t all_containers < <(docker ps -a --format '{{.Names}}' | sort)
 
 # Explicitly identify temporary artifacts for critical-pressure cleanup. Only
 # a newer verified backup for every service permits their eventual removal.
-python3 - "${all_containers[@]}" > "${incomplete_dir}/.cleanup-disposable.json" <<'PYMARKER'
-import json, sys
-print(json.dumps({"protocol": "homelab-full-v1", "disposable": True, "services": sys.argv[1:]}))
-PYMARKER
+docker inspect "${all_containers[@]}" | python3 -c '
+import json, runpy, sys
+cleanup = runpy.run_path(sys.argv[1])
+inventory = sys.stdin.read()
+print(json.dumps({"protocol": "homelab-full-v1", "disposable": True,
+                  "services": cleanup["services_from_inspect"](inventory),
+                  "bindings": cleanup["binding_versions"](inventory)}))
+' "${SOURCE_ROOT}/backup/backup-cleanup.py" > "${incomplete_dir}/.cleanup-disposable.json"
 
 # Copy bind-mounted application state while it is quiet. Compression happens
 # after unpausing, so this interruption is limited to the raw disk copy.

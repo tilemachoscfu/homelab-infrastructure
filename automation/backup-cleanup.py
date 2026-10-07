@@ -173,6 +173,8 @@ def verify_snapshot(rootfd, name, zone):
             marker, _ = read_file(fd, MARKER, max_bytes=16384)
             if marker_services(marker) != services:
                 raise Unsafe("Snapshot and marker service inventories differ")
+            if "bindings" in json.loads(marker) and json.loads(marker)["bindings"] != binding_versions(inventory):
+                raise Unsafe("Service mounts changed during backup; preserve uncertain snapshot")
         for filename, sig in identities.items():
             st = os.stat(filename, dir_fd=fd, follow_symlinks=False)
             if signature(st) != sig:
@@ -302,8 +304,12 @@ def inspect_disposable(rootfd, name, records, now):
             raise Unsafe("Incomplete artifacts lack explicit disposable proof")
         raw, _ = read_file(fd, MARKER, max_bytes=16384)
         services = marker_services(raw)
+        bindings = json.loads(raw).get("bindings")
+        if not isinstance(bindings, dict) or set(bindings) != set(services):
+            raise Unsafe("Incomplete artifacts lack verified mount versions")
         for service in services:
             if not any(service in r["services"] and
+                       r["bindings"][service] == bindings[service] and
                        datetime.fromisoformat(r["timestamp"]) > stamp for r in records):
                 raise Unsafe(f"No newer verified replacement for {service}")
         identities = {}; allocated = logical = 0
@@ -316,7 +322,8 @@ def inspect_disposable(rootfd, name, records, now):
             allocated += st.st_blocks * 512; logical += st.st_size
         return {"name": name, "timestamp": stamp.isoformat(), "services": services,
                 "files": identities, "directory": signature(os.fstat(fd)),
-                "bytes": logical, "allocated_bytes": allocated, "kind": "disposable"}
+                "bytes": logical, "allocated_bytes": allocated, "kind": "disposable",
+                "bindings": bindings}
     finally:
         os.close(fd)
 
@@ -487,6 +494,10 @@ def execute(config, plan, log):
                             if record["kind"] == "snapshot":
                                 same_binding = [r for r in retained.values()
                                                 if service in r["services"] and
+                                                r["bindings"][service] == record["bindings"][service]]
+                                anchor = max(same_binding, key=lambda r: r["timestamp"]) if same_binding else None
+                            elif anchor is not None and anchor["bindings"][service] != record["bindings"][service]:
+                                same_binding = [r for r in retained.values() if service in r["services"] and
                                                 r["bindings"][service] == record["bindings"][service]]
                                 anchor = max(same_binding, key=lambda r: r["timestamp"]) if same_binding else None
                             if anchor is None or anchor["name"] == record["name"]:

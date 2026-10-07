@@ -196,7 +196,8 @@ class SafetyTests(unittest.TestCase):
         p = self.root / ".incomplete-2020-01-01T000000"
         p.mkdir()
         (p / c.MARKER).write_text(json.dumps({"protocol": "homelab-full-v1", "disposable": True,
-                                            "services": ["app"]}))
+                                            "services": ["app"],
+                                            "bindings": c.binding_versions('[{"Name":"/app"}]')}))
         (p / "docker-configs.tar").write_bytes(b"partial copy")
         for f in p.iterdir():
             os.utime(f, (NOW.timestamp() - 10 * 86400,) * 2)
@@ -335,6 +336,14 @@ class SafetyTests(unittest.TestCase):
         reasons, _ = c.retention([old, new], NOW)
         self.assertTrue(reasons[old["name"]])
         self.assertTrue(any(r.startswith("last-mount-version:") for r in reasons[old["name"]]))
+
+    def test_disposable_old_mount_cannot_be_replaced_by_new_mount(self):
+        self.snapshot(NOW); p = self.disposable()
+        marker = json.loads((p / c.MARKER).read_text())
+        marker["bindings"]["app"] = "different-mount-version"
+        (p / c.MARKER).write_text(json.dumps(marker))
+        os.utime(p / c.MARKER, (NOW.timestamp() - 10 * 86400,) * 2)
+        self.assertEqual(self.plan(99)["selected"], [])
 
 
 if __name__ == "__main__":

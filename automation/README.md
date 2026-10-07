@@ -59,7 +59,10 @@ Filesystem pressure is measured using available space, including reserved
 blocks: below 80% is HEALTHY, 80–85% WARNING, and above 85% CRITICAL. Retention
 runs at all levels. Critical pressure additionally allows only producer-marked
 `.incomplete-<timestamp>` artifacts older than seven days, with no unknown
-files and with a newer verified retained replacement for every listed service.
+files and with a newer verified retained replacement for every listed service
+and its recorded mount version. Legacy markers without mount versions are
+preserved. The producer captures mount versions before copying and complete
+snapshots with a changed start/end mount inventory are preserved as uncertain.
 Legacy/unmarked incomplete directories are always preserved. The producer
 leaves failures for inspection instead of recursively deleting their contents.
 
