@@ -316,6 +316,17 @@ class SafetyTests(unittest.TestCase):
         plan = self.plan()
         self.assertEqual(plan["selected"], []); self.assertTrue(plan["errors"])
 
+    def test_audited_coverage_gap_warns_even_below_pressure_threshold(self):
+        self.snapshot(NOW)
+        self.config["coverage_warnings"] = ["Service live state is outside the producer scope"]
+        (self.state / "last-run.json").write_text(json.dumps({
+            "timestamp": NOW.isoformat(), "mode": "execute", "root": str(self.root), "errors": []}))
+        with patch.object(c, "check_mount", return_value=self.identity), patch.object(
+                c, "usage", return_value={"usage_percent": 30}):
+            result = c.health(self.config, NOW)
+        self.assertEqual(result["status"], "WARNING")
+        self.assertIn(self.config["coverage_warnings"][0], result["text"])
+
 
 if __name__ == "__main__":
     unittest.main()

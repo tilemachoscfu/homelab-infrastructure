@@ -218,6 +218,9 @@ def read_config(path):
         for name, reason in pins.items()
     ):
         raise Unsafe("Invalid explicitly protected snapshot inventory")
+    warnings = config.get("coverage_warnings", [])
+    if not isinstance(warnings, list) or any(not isinstance(w, str) or not w for w in warnings):
+        raise Unsafe("Invalid audited backup coverage warnings")
     return config
 
 
@@ -495,7 +498,7 @@ def print_plan(plan, verbose):
     if verbose:
         for r in plan["protected"]:
             print(f"PROTECTED {r['name']}: {r['reason']}")
-    print(f"Latest service restore points protected: {len(plan['anchors'])}")
+    print(f"Latest verified snapshots per service inventory protected: {len(plan['anchors'])}")
     print(f"Selected backups: {len(plan['selected'])}; estimated reclaimed space: "
           f"{plan['estimated_reclaimed_bytes']} bytes "
           f"({plan['estimated_reclaimed_bytes'] / 1024**3:.2f} GiB)")
@@ -504,7 +507,7 @@ def print_plan(plan, verbose):
 
 
 def health(config, now):
-    problems = []
+    problems = list(config.get("coverage_warnings", []))
     state = Path(config["state_dir"]) / "last-run.json"
     check_mount(config)
     disk = usage(config["backup_root"])

@@ -28,6 +28,13 @@ the mountpoint, filesystem source, type and UUID; it is never exported to Git.
 It hashes every manifest-listed component before making a retention plan.
 Completeness and integrity follow the producer's successful final rename and
 SHA256 manifest protocol; this does not replace periodic restore exercises.
+The container inventory supports conservative protection of the newest set
+containing each service; it does not prove that every bind-mounted live state
+is covered by the producer. In the current audit, Home Assistant live state
+is outside the producer's source root. It is never inspected by cleanup, and
+its manual rollback backups remain protected. Audited coverage gaps belong in
+the private policy's `coverage_warnings`; these keep the storage health status
+at WARNING even when filesystem pressure falls below 80%.
 
 Retention is applied separately to every service in the snapshot inventory:
 all snapshots within the rolling last seven days (inclusive), the newest in

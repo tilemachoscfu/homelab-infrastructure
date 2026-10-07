@@ -54,6 +54,8 @@ def main():
             raise SystemExit("Existing approved root differs; review policy before replacing it")
         if existing.get("protected_snapshots"):
             config["protected_snapshots"] = existing["protected_snapshots"]
+        if existing.get("coverage_warnings"):
+            config["coverage_warnings"] = existing["coverage_warnings"]
     for target in [policy, *(dest for _, dest in targets)]:
         if target.is_symlink():
             raise SystemExit(f"Symlink installation target refused: {target.name}")
