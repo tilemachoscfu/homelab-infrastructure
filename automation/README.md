@@ -24,7 +24,15 @@ health-report schedules.
 
 `backup-cleanup.py` only handles the audited full-snapshot format under an
 explicitly approved `HomelabBackups` directory. Its private local policy pins
-the mountpoint, filesystem source, type and UUID; it is never exported to Git.
+the mountpoint, filesystem type and UUID; it is never exported to Git. The
+recorded source path is audit metadata: changing `/dev/sda3` to `/dev/sdb3`
+does not change filesystem identity. Validation requires the live mount UUID
+to match, resolves its stable `/dev/disk/by-uuid/` block device, checks that
+the mounted source refers to that device and that the opened backup root is
+on it. Missing/unverifiable UUIDs, wrong devices, mountpoints or types, and
+ambiguous/missing real mounts stop cleanup without deletion. These checks
+are repeated immediately before each unlink; checksum and retention rules
+remain unchanged.
 It hashes every manifest-listed component before making a retention plan.
 Completeness and integrity follow the producer's successful final rename and
 SHA256 manifest protocol; this does not replace periodic restore exercises.

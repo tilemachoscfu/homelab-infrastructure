@@ -8,7 +8,9 @@ import io
 import json
 import os
 from pathlib import Path
+import stat
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
@@ -187,6 +189,95 @@ class SafetyTests(unittest.TestCase):
         self.assertEqual(deleted, []); self.assertEqual(reclaimed, 0)
         self.assertTrue(errors); self.assertTrue(old.exists())
 
+    def mount_config(self):
+        return {**self.config, "filesystem": {
+            "target": str(self.root.parent), "source": "/dev/sda3",
+            "fstype": "fuseblk", "uuid": "ABCD-1234"}}
+
+    def mounted_row(self):
+        return {**self.mount_config()["filesystem"], "source": "/dev/sdb3"}
+
+    def check_rows(self, rows, device=None):
+        result = SimpleNamespace(stdout=json.dumps({"filesystems": rows}))
+        with patch.object(c.subprocess, "run", return_value=result), patch.object(
+                c, "uuid_device", return_value=self.identity[0] if device is None else device):
+            return c.check_mount(self.mount_config())
+
+    def test_mount_device_renumbering_sda3_to_sdb3_accepted(self):
+        self.assertEqual(self.check_rows([self.mounted_row()]), self.identity)
+
+    def test_autofs_row_ignored_when_real_uuid_mount_exists(self):
+        autofs = {"target": str(self.root.parent), "source": "systemd-1",
+                  "fstype": "autofs", "uuid": None}
+        self.assertEqual(self.check_rows([autofs, self.mounted_row()]), self.identity)
+
+    def test_mount_uuid_missing_or_mismatched_rejected(self):
+        for uuid in (None, "", "WRONG-5678"):
+            with self.subTest(uuid=uuid), self.assertRaises(c.Unsafe):
+                self.check_rows([{**self.mounted_row(), "uuid": uuid}])
+
+    def test_unmounted_filesystem_rejected(self):
+        for rows in ([], [{"target": str(self.root.parent), "source": "systemd-1",
+                           "fstype": "autofs", "uuid": None}],
+                     [{"target": "/", "source": "/dev/sdb3",
+                       "fstype": "fuseblk", "uuid": "ABCD-1234"}]):
+            with self.subTest(rows=rows), self.assertRaises(c.Unsafe):
+                self.check_rows(rows)
+
+    def test_mount_type_or_target_change_and_ambiguous_rows_rejected(self):
+        row = self.mounted_row()
+        for rows in ([{**row, "fstype": "ext4"}], [{**row, "target": "/other"}],
+                     [row, row]):
+            with self.subTest(rows=rows), self.assertRaises(c.Unsafe):
+                self.check_rows(rows)
+
+    def test_root_opened_on_different_device_rejected(self):
+        with self.assertRaises(c.Unsafe):
+            self.check_rows([self.mounted_row()], device=self.identity[0] + 1)
+
+    def test_uuid_resolver_accepts_same_block_device_under_new_name(self):
+        node = SimpleNamespace(st_mode=stat.S_IFBLK | 0o600, st_rdev=123)
+        with patch.object(c.os, "stat", return_value=node) as lookup:
+            self.assertEqual(c.uuid_device("ABCD-1234", "/dev/sdb3"), 123)
+        self.assertEqual(lookup.call_args_list[0].args[0], Path("/dev/disk/by-uuid/ABCD-1234"))
+        self.assertEqual(lookup.call_args_list[1].args[0], "/dev/sdb3")
+
+    def test_uuid_resolver_missing_device_rejected(self):
+        with patch.object(c.os, "stat", side_effect=FileNotFoundError), self.assertRaises(c.Unsafe):
+            c.uuid_device("ABCD-1234", "/dev/sdb3")
+
+    def test_uuid_resolver_wrong_device_or_nonblock_rejected(self):
+        block = SimpleNamespace(st_mode=stat.S_IFBLK, st_rdev=123)
+        for node in (SimpleNamespace(st_mode=stat.S_IFBLK, st_rdev=456),
+                     SimpleNamespace(st_mode=stat.S_IFREG, st_rdev=123)):
+            with self.subTest(node=node), patch.object(c.os, "stat", side_effect=[block, node]):
+                with self.assertRaises(c.Unsafe):
+                    c.uuid_device("ABCD-1234", "/dev/sdb3")
+
+    def test_unverifiable_uuid_and_source_rejected(self):
+        for uuid, source in ((None, "/dev/sdb3"), ("", "/dev/sdb3"),
+                             ("../escape", "/dev/sdb3"), ("ABCD-1234", None),
+                             ("ABCD-1234", "tmpfs")):
+            with self.subTest(uuid=uuid, source=source), self.assertRaises(c.Unsafe):
+                c.uuid_device(uuid, source)
+
+    def test_findmnt_failure_preserves_backup_files(self):
+        old = self.snapshot(NOW - timedelta(days=500))
+        with patch.object(c.subprocess, "run", side_effect=c.subprocess.CalledProcessError(1, "findmnt")):
+            with self.assertRaises(c.subprocess.CalledProcessError):
+                c.build_plan(self.mount_config(), NOW)
+        self.assertEqual(len(list(old.iterdir())), 11)
+
+    def test_uuid_mismatch_during_execution_deletes_nothing(self):
+        old = self.snapshot(NOW - timedelta(days=500)); self.snapshot(NOW)
+        plan = self.plan()
+        result = SimpleNamespace(stdout=json.dumps({"filesystems": [
+            {**self.mounted_row(), "uuid": "WRONG-5678"}]}))
+        with patch.object(c.subprocess, "run", return_value=result):
+            deleted, reclaimed, errors = c.execute(self.mount_config(), plan, c.Log(self.state, NOW))
+        self.assertEqual(deleted, []); self.assertEqual(reclaimed, 0)
+        self.assertTrue(errors); self.assertEqual(len(list(old.iterdir())), 11)
+
     def test_unmarked_incomplete_never_deleted_even_critical(self):
         self.snapshot(NOW)
         (self.root / ".incomplete-2020-01-01T000000").mkdir()
@@ -219,6 +310,20 @@ class SafetyTests(unittest.TestCase):
     def test_pressure_boundaries(self):
         self.assertEqual([c.pressure(x) for x in (79.99, 80, 85, 85.01)],
                          ["HEALTHY", "WARNING", "WARNING", "CRITICAL"])
+
+    def test_successful_cleanup_at_83_percent_remains_warning(self):
+        self.snapshot(NOW)
+        (self.state / "last-run.json").write_text(json.dumps({
+            "timestamp": NOW.isoformat(), "mode": "execute", "root": str(self.root),
+            "deleted": [], "errors": [], "reclaimed_bytes": 0}))
+        result = SimpleNamespace(stdout=json.dumps({"filesystems": [self.mounted_row()]}))
+        with patch.object(c.subprocess, "run", return_value=result), patch.object(
+                c, "uuid_device", return_value=self.identity[0]), patch.object(
+                c, "usage", return_value={"usage_percent": 83}):
+            health = c.health(self.mount_config(), NOW)
+        self.assertEqual(health["status"], "WARNING")
+        self.assertIn("Backup filesystem usage 83.00%", health["text"])
+        self.assertNotIn("CRITICAL", health["text"])
 
     def test_unknown_root_rejected(self):
         p = Path(self.tmp.name) / "policy.json"

@@ -204,18 +204,40 @@ def pressure(percent):
     return "CRITICAL" if percent > 85 else "WARNING" if percent >= 80 else "HEALTHY"
 
 
+def uuid_device(uuid, source):
+    """Require the mounted source to be the block device named by the UUID."""
+    if not isinstance(uuid, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]*", uuid):
+        raise Unsafe("Missing or invalid audited filesystem UUID")
+    if not isinstance(source, str) or not source.startswith("/dev/"):
+        raise Unsafe("Mounted filesystem source is not a verifiable block device")
+    try:
+        stable = os.stat(Path("/dev/disk/by-uuid") / uuid)
+        mounted = os.stat(source)
+    except OSError as exc:
+        raise Unsafe("Filesystem UUID device cannot be verified") from exc
+    if (not stat.S_ISBLK(stable.st_mode) or not stat.S_ISBLK(mounted.st_mode)
+            or stable.st_rdev != mounted.st_rdev):
+        raise Unsafe("Mounted device differs from the audited filesystem UUID")
+    return stable.st_rdev
+
+
 def check_mount(config):
-    """Autofs may supply a second row; require the real, audited filesystem."""
+    """Require UUID, mountpoint and type; /dev/sdX names may change at boot."""
     result = subprocess.run(
         ["findmnt", "-J", "-T", config["backup_root"], "-o", "TARGET,SOURCE,FSTYPE,UUID"],
         check=True, capture_output=True, text=True, timeout=10)
     matches = [x for x in json.loads(result.stdout)["filesystems"]
                if x.get("fstype") != "autofs"]
     expected = config["filesystem"]
-    if len(matches) != 1 or any(matches[0].get(k) != v for k, v in expected.items()):
+    if len(matches) != 1 or any(matches[0].get(k) != expected.get(k)
+                              for k in ("target", "fstype", "uuid")):
         raise Unsafe("Backup filesystem missing or identity differs from audit")
+    device = uuid_device(expected.get("uuid"), matches[0].get("source"))
     with directory(config["backup_root"]) as fd:
-        return signature(os.fstat(fd))[:2]
+        identity = signature(os.fstat(fd))[:2]
+        if identity[0] != device:
+            raise Unsafe("Backup root is not on the verified UUID device")
+        return identity
 
 
 def read_config(path):
