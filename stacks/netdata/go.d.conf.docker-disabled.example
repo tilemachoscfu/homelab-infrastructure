@@ -1,0 +1,9 @@
+# Opt-in isolation of the Docker API module after measured validation.
+# Preserve current stock/user defaults and all other module settings.
+# This example is not enabled by Compose automatically.
+enabled: yes
+default_run: yes
+max_procs: 0
+
+modules:
+  docker: no
