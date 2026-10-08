@@ -1,16 +1,36 @@
 services:
   radarr:
-    image: lscr.io/linuxserver/radarr:latest
+    entrypoint:
+    - /bin/sh
+    - /storage-mount-guard.sh
+    - /init
+    image: lscr.io/linuxserver/radarr@sha256:7dfd049e79c00b16fbc29c3f5d96a9e7b9e73a23930b4c5b3c4541d60b366814
     container_name: radarr
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Athens
+    - PUID=1000
+    - PGID=1000
+    - TZ=Europe/Athens
     volumes:
-      - ./config:/config
-      - ${MEDIA_ROOT:-/srv/media}:/data
+    - ./config:/config
+    - ${MEDIA_ROOT:-/srv/media}:/data
+    - type: bind
+      source: /srv/storage
+      target: /storage
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ${DOCKER_ROOT:-/opt/homelab}/storage-mount-guard.sh
+      target: /storage-mount-guard.sh
+      read_only: true
+      bind:
+        create_host_path: false
     ports:
-      - "7878:7878"
+    - 7878:7878
     restart: unless-stopped
     mem_limit: 768m
-    cpus: 1.00
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'

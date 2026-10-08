@@ -3,86 +3,141 @@ services:
     image: qmcgaw/gluetun@sha256:8e92dcb57ed64b0e4469c933f00ef1e09ee00867fee150e783a95fa6b53effa4
     container_name: gluetun
     cap_add:
-      - NET_ADMIN
+    - NET_ADMIN
     devices:
-      - /dev/net/tun:/dev/net/tun
+    - /dev/net/tun:/dev/net/tun
     volumes:
-      - ./gluetun/wg0.conf:/gluetun/wireguard/wg0.conf:ro
+    - ./gluetun/wg0.conf:/gluetun/wireguard/wg0.conf:ro
     environment:
-      - VPN_SERVICE_PROVIDER=custom
-      - VPN_TYPE=wireguard
-      - TZ=Europe/Athens
-      - FIREWALL_VPN_INPUT_PORTS=14285,3492
-      - FIREWALL_OUTBOUND_SUBNETS=${LAN_SUBNET:?Set LAN_SUBNET}
+    - VPN_SERVICE_PROVIDER=custom
+    - VPN_TYPE=wireguard
+    - TZ=Europe/Athens
+    - FIREWALL_VPN_INPUT_PORTS=14285,3492
+    - FIREWALL_OUTBOUND_SUBNETS=${LAN_SUBNET:?Set LAN_SUBNET}
     ports:
-      - "8081:8081"
-      - "${HOMELAB_IP:?Set HOMELAB_IP}:5030:5030"
-      - "${HOMELAB_IP:?Set HOMELAB_IP}:8265:8265"
+    - 8081:8081
+    - ${HOMELAB_IP:?Set HOMELAB_IP}:5030:5030
+    - ${HOMELAB_IP:?Set HOMELAB_IP}:8265:8265
     restart: unless-stopped
     mem_limit: 256m
-    cpus: 0.50
-
+    cpus: 0.5
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
+    entrypoint:
+    - /bin/sh
+    - /storage-mount-guard.sh
+    - /init
+    image: lscr.io/linuxserver/qbittorrent@sha256:b522f9f4b769f8f36d49d22d5eb6a92e9aa18904c6a1830b1439df511ec21983
     container_name: qbittorrent
-    network_mode: "service:gluetun"
+    network_mode: service:gluetun
     depends_on:
       gluetun:
         condition: service_healthy
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Athens
-      - WEBUI_PORT=8081
+    - PUID=1000
+    - PGID=1000
+    - TZ=Europe/Athens
+    - WEBUI_PORT=8081
     volumes:
-      - ./qbittorrent:/config
-      - ${MEDIA_ROOT:-/srv/media}:/data
+    - ./qbittorrent:/config
+    - ${MEDIA_ROOT:-/srv/media}:/data
+    - type: bind
+      source: /srv/storage
+      target: /storage
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ${DOCKER_ROOT:-/opt/homelab}/storage-mount-guard.sh
+      target: /storage-mount-guard.sh
+      read_only: true
+      bind:
+        create_host_path: false
     restart: unless-stopped
     mem_limit: 768m
-    cpus: 1.00
-
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
   slskd:
+    entrypoint:
+    - /bin/sh
+    - /storage-mount-guard.sh
+    - /usr/bin/tini
+    - --
+    - /entrypoint.sh
+    command:
+    - ./slskd
     image: slskd/slskd@sha256:ecd4026d4f8fb504e2cc55323efa2c1f5b56d20d3686b018249cc36b48ea17a6
     container_name: slskd
-    network_mode: "service:gluetun"
+    network_mode: service:gluetun
     depends_on:
       gluetun:
         condition: service_healthy
-    user: "1000:1000"
+    user: 1000:1000
     env_file:
-      - ../slskd-soularr/.env
+    - ../slskd-soularr/.env
     environment:
-      - TZ=Europe/Athens
-      - SLSKD_REMOTE_CONFIGURATION=true
-      - SLSKD_DOWNLOADS_DIR=/downloads/complete
-      - SLSKD_INCOMPLETE_DIR=/downloads/incomplete
-      - SLSKD_SLSK_LISTEN_PORT=3492
+    - TZ=Europe/Athens
+    - SLSKD_REMOTE_CONFIGURATION=true
+    - SLSKD_DOWNLOADS_DIR=/storage/downloads/slskd/complete
+    - SLSKD_INCOMPLETE_DIR=/downloads/incomplete
+    - SLSKD_SLSK_LISTEN_PORT=3492
     volumes:
-      - ../slskd-soularr/slskd:/app
-      - ${MEDIA_ROOT:-/srv/media}/Downloads/slskd:/downloads
-      - ${MEDIA_ROOT:-/srv/media}/Music:/music:ro
+    - type: bind
+      source: /srv/storage
+      target: /storage
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ${DOCKER_ROOT:-/opt/homelab}/storage-mount-guard.sh
+      target: /storage-mount-guard.sh
+      read_only: true
+      bind:
+        create_host_path: false
+    - ../slskd-soularr/slskd:/app
+    - ${MEDIA_ROOT:-/srv/media}/Downloads/slskd:/downloads
+    - ${MEDIA_ROOT:-/srv/media}/Music:/music:ro
     restart: unless-stopped
     mem_limit: 768m
-    cpus: 1.00
-
+    cpus: 1.0
   soularr:
+    entrypoint:
+    - /bin/sh
+    - /storage-mount-guard.sh
+    - tini
+    - -g
+    - --
+    command:
+    - /app/run.sh
     image: mrusse08/soularr@sha256:9d17bdc35108afd747c4862dc32a0c1cba821638d170e1374188a977ce255c76
     container_name: soularr
-    network_mode: "service:gluetun"
+    network_mode: service:gluetun
     depends_on:
       gluetun:
         condition: service_healthy
       slskd:
         condition: service_started
     environment:
-      - TZ=Europe/Athens
-      - SCRIPT_INTERVAL=300
-      - WEBUI_ENABLED=true
-      - WEBUI_PORT=8265
-    user: "1000:1000"
+    - TZ=Europe/Athens
+    - SCRIPT_INTERVAL=300
+    - WEBUI_ENABLED=true
+    - WEBUI_PORT=8265
+    user: 1000:1000
     volumes:
-      - ${MEDIA_ROOT:-/srv/media}/Downloads/slskd:/downloads
-      - ../slskd-soularr/soularr:/data
+    - type: bind
+      source: /srv/storage
+      target: /storage
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ${DOCKER_ROOT:-/opt/homelab}/storage-mount-guard.sh
+      target: /storage-mount-guard.sh
+      read_only: true
+      bind:
+        create_host_path: false
+    - ${MEDIA_ROOT:-/srv/media}/Downloads/slskd:/downloads
+    - ../slskd-soularr/soularr:/data
     restart: unless-stopped
     mem_limit: 384m
-    cpus: 0.50
+    cpus: 0.5

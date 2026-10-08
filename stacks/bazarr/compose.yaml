@@ -1,16 +1,37 @@
 services:
   bazarr:
-    image: lscr.io/linuxserver/bazarr:latest
+    image: lscr.io/linuxserver/bazarr@sha256:c1673816321156b904af9b7e6415ea547ae9622e4acc375358f1e1eb9ed1e904
     container_name: bazarr
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Athens
+    - PUID=1000
+    - PGID=1000
+    - TZ=Europe/Athens
     volumes:
-      - ./config:/config
-      - ${MEDIA_ROOT:-/srv/media}:/data
+    - ./config:/config
+    - ${MEDIA_ROOT:-/srv/media}:/data
+    - type: bind
+      source: /srv/storage
+      target: /storage
+      read_only: false
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ${DOCKER_ROOT:-/opt/homelab}/storage-mount-guard.sh
+      target: /storage-mount-guard.sh
+      read_only: true
+      bind:
+        create_host_path: false
     ports:
-      - "6767:6767"
+    - 6767:6767
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.75
+    entrypoint:
+    - /bin/sh
+    - /storage-mount-guard.sh
+    - /init
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'

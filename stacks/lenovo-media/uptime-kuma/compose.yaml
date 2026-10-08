@@ -1,0 +1,17 @@
+services:
+  uptime-kuma:
+    extra_hosts:
+      - "tilemachos-hp-laptop-15-db0xxx.tail95a4e1.ts.net:${HP_PRIVATE_IP:?Set HP_PRIVATE_IP}"
+    image: louislam/uptime-kuma@sha256:3d632903e6af34139a37f18055c4f1bfd9b7205ae1138f1e5e8940ddc1d176f9
+    container_name: uptime-kuma
+    dns:
+      - ${HOMELAB_IP:?Set HOMELAB_IP}
+    dns_opt:
+      - "ndots:0"
+      - "timeout:2"
+      - "attempts:2"
+    restart: unless-stopped
+    ports:
+      - "${LENOVO_IP:?Set LENOVO_IP}:3001:3001"
+    volumes:
+      - ${LENOVO_APPDATA_ROOT:-/opt/homelab/appdata}/uptime-kuma:/app/data

@@ -1,6 +1,6 @@
 services:
   dockerproxy:
-    image: ghcr.io/tecnativa/docker-socket-proxy:latest
+    image: ghcr.io/tecnativa/docker-socket-proxy@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
     container_name: homepage-dockerproxy
     restart: unless-stopped
     environment:
@@ -13,19 +13,24 @@ services:
     mem_limit: 128m
     cpus: 0.25
   homepage:
+    dns:
+    - ${HOMELAB_IP:?Set HOMELAB_IP}
     image: ghcr.io/gethomepage/homepage@sha256:643bd0be730d40f69d58028a55d1a896739333e8815786df42bc97f109ecbe61
     container_name: homepage
     restart: unless-stopped
     env_file:
-    - .env
+    - /opt/homelab/secrets/homepage.env
     depends_on:
     - dockerproxy
     ports:
-    - 3002:3000
+    - ${LENOVO_IP:?Set LENOVO_IP}:3002:3000
     environment:
-      HOMEPAGE_ALLOWED_HOSTS: home.home.arpa,${HOMELAB_IP:?Set HOMELAB_IP}:3002
+      HOMEPAGE_ALLOWED_HOSTS: home.home.arpa,${LENOVO_IP:?Set LENOVO_IP}:3002
+    extra_hosts:
+    - support-host:${LENOVO_IP:?Set LENOVO_IP}
+    - hp-homelab:${HOMELAB_IP:?Set HOMELAB_IP}
     volumes:
-    - ./config:/app/config
+    - ${LENOVO_APPDATA_ROOT:-/opt/homelab/appdata}/homepage:/app/config
     mem_limit: 384m
     cpus: 0.5
     logging:

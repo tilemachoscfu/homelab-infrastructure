@@ -1,25 +1,30 @@
 services:
   scrutiny:
-    image: ghcr.io/analogj/scrutiny:latest-omnibus
+    image: ghcr.io/analogj/scrutiny@sha256:6ee271ee531458f134220ca8b2c5c8ccc2711a799c827fef953fa865d91e312f
     container_name: scrutiny
     restart: unless-stopped
     cap_add:
-      - SYS_RAWIO
-      - SYS_ADMIN
+    - SYS_RAWIO
+    - SYS_ADMIN
     ports:
-      - "8082:8080"
+    - 8082:8080
     environment:
       TZ: Europe/Athens
-      COLLECTOR_RUN_STARTUP: "true"
-      COLLECTOR_RUN_STARTUP_SLEEP: "10"
-      COLLECTOR_CRON_SCHEDULE: "0 3 * * *"
+      COLLECTOR_RUN_STARTUP: 'true'
+      COLLECTOR_RUN_STARTUP_SLEEP: '10'
+      COLLECTOR_CRON_SCHEDULE: 0 3 * * *
     volumes:
-      - ./config:/opt/scrutiny/config
-      - ./influxdb:/opt/scrutiny/influxdb
-      - /run/udev:/run/udev:ro
+    - ./config:/opt/scrutiny/config
+    - ./influxdb:/opt/scrutiny/influxdb
+    - /run/udev:/run/udev:ro
     devices:
-      - ${SMART_DEVICE_SDA:?Set SMART_DEVICE_SDA}:/dev/sda
-      - /dev/nvme0:/dev/nvme0
-      - ${SMART_DEVICE_SDB:?Set SMART_DEVICE_SDB}:/dev/sdb
+    - ${SMART_DEVICE_SDA:?Set SMART_DEVICE_SDA}:/dev/sda
+    - /dev/nvme0:/dev/nvme0
+    - ${SMART_DEVICE_SDB:?Set SMART_DEVICE_SDB}:/dev/sdb
     mem_limit: 768m
     cpus: 0.75
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
