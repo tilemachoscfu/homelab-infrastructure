@@ -1,0 +1,8 @@
+# Opt-in process and cgroup collection intervals.
+# Merge these settings into a backed-up existing netdata.conf after validation.
+# Preserve global collection, retention, quotas and other collector settings.
+[plugin:apps]
+    update every = 5
+
+[plugin:cgroups]
+    update every = 5
