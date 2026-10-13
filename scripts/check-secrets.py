@@ -33,11 +33,15 @@ SENSITIVE_ASSIGNMENT = re.compile(
 
 
 def is_safe_placeholder(value: str) -> bool:
-    normalized = value.strip().strip("\"'")
+    normalized = value.strip()
+    if len(normalized) >= 2 and normalized[0] in "\"'" and normalized[-1] == normalized[0]:
+        normalized = normalized[1:-1]
     return (
-        "CHANGE_ME" in normalized
-        or normalized.startswith("${")
-        or normalized in {"", "null", "~"}
+        normalized in {"CHANGE_ME", "", "null", "~"}
+        or re.fullmatch(
+            r"\$\{[A-Za-z_][A-Za-z0-9_]*(?:(?::-|-)(?:CHANGE_ME)?|(?::\?|\?)[^{}\r\n]*)?\}",
+            normalized,
+        ) is not None
     )
 
 
