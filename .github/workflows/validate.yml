@@ -25,10 +25,17 @@ jobs:
       - name: Validate Python tools
         run: python3 -m py_compile scripts/*.py
 
+      - name: Storage monitoring regression tests
+        run: python3 -m unittest discover -s tests -v
+
       - name: Validate shell tools
         run: bash -n scripts/*.sh
 
       - name: Validate Compose templates
+        env:
+          # Syntax-only placeholders: never probe or deploy these devices.
+          SMART_DEVICE_SDA: /dev/disk/by-id/EXAMPLE_TEST_ONLY_SDA
+          SMART_DEVICE_SDB: /dev/disk/by-id/EXAMPLE_TEST_ONLY_SDB
         run: |
           mkdir -p stacks/slskd-soularr
           touch stacks/slskd-soularr/.env

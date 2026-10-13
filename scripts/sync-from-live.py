@@ -74,6 +74,7 @@ STACKS = {
 }
 
 AUTOMATION_FILES = {
+    "storage_health.py": LIVE / "monitoring" / "media-health" / "storage_health.py",
     "backup-homelab.sh": LIVE / "backup" / "backup-homelab.sh",
     "backup-cleanup.py": LIVE / "backup" / "backup-cleanup.py",
     "backup-cleanup.service": Path.home() / ".config/systemd/user/backup-cleanup.service",
