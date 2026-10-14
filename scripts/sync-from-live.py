@@ -74,6 +74,7 @@ STACKS = {
 }
 
 AUTOMATION_FILES = {
+    "atomic_json.py": LIVE / "monitoring" / "media-health" / "atomic_json.py",
     "storage_health.py": LIVE / "monitoring" / "media-health" / "storage_health.py",
     "backup-homelab.sh": LIVE / "backup" / "backup-homelab.sh",
     "backup-cleanup.py": LIVE / "backup" / "backup-cleanup.py",
