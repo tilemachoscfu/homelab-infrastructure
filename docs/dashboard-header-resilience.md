@@ -19,7 +19,7 @@ entities as the source of truth if those helpers are reused elsewhere.
   battery or charging icon. Missing battery data displays a waiting label.
 - The active-device count remains numeric. A separate `summary` attribute supplies
   the badge's label, including the correct singular or plural form. The badge
-  uses `state_content: summary`.
+  uses `state_content: summary`. A zero count is labeled `Όλα κλειστά`.
 - Off, standby, unknown and unavailable devices are excluded from the activity
   count. Use current registered entity IDs for its explicit device list.
 - Missing room temperatures display a dash; never substitute zero.
