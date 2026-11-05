@@ -57,3 +57,20 @@ template integration, and force-load or refresh the dashboard. Restore registry
 settings only if they were changed independently of the phone's own settings.
 
 No custom frontend resources or additional card plugins are required.
+
+## Phone onboarding and local DNS
+
+A phone can discover the server but fail to open the advertised internal URL if
+its DNS resolver cannot resolve a custom local hostname. Check the error details
+before changing credentials. Verify the direct LAN endpoint and the server's
+internal URL separately.
+
+Where necessary, use the server's stable numeric LAN address as its internal URL,
+leaving the external URL and reverse-proxy routes intact. Back up the core
+configuration before changing it. Verify both the stored URL and the mDNS
+`internal_url` / `base_url` properties. A controlled Home Assistant restart can be
+needed to publish the new discovery properties.
+
+On an affected phone, close the failed onboarding sheet and select the server
+again, or enter its complete internal address manually. The app still needs local
+network permission. This change does not configure access from outside the LAN.
