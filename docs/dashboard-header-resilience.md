@@ -1,14 +1,15 @@
 # Native dashboard header
 
-The home dashboard uses a native Markdown header and four entity badges. The
-header combines a time-aware greeting, a localized date and current room
-temperatures linked to their existing room views. Existing sections, other views,
-themes and control actions are preserved.
+The home dashboard uses a native Markdown header and two entity badges. The
+header combines a time-aware greeting and a localized date. The badges show home
+status and device activity. Room temperatures remain in their existing climate
+cards; room links and phone/presence badges are omitted from the header by user
+preference. Existing sections, other views, themes and control actions are
+preserved.
 
-The badges show presence, home status, device activity and phone battery. Use
-display-only template sensors for phone data so missing or disabled source
-entities produce a clear waiting message. Keep the original person and mobile
-entities as the source of truth.
+Optional display-only phone template sensors retain guarded missing-data labels,
+but are not displayed in the current header. Keep the original person and mobile
+entities as the source of truth if those helpers are reused elsewhere.
 
 ## State handling
 
@@ -48,7 +49,7 @@ phone sensors. Keep diagnostic exports and device details in private storage.
    the header's user context and missing-data cases.
 3. Run Home Assistant's configuration check before reloading templates.
 4. Force-load the YAML dashboard through the native Lovelace API; confirm that
-   all four badge entities exist and preserve the original sections and views.
+   both displayed badge entities exist and preserve the original sections and views.
 5. Check the rendered activity summary and the unchanged source tracker state.
 6. Refresh the client to pick up the new header.
 
