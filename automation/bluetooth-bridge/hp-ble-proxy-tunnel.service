@@ -1,0 +1,21 @@
+[Unit]
+Description=Encrypted Bluetooth receiver tunnel to Home Assistant
+After=hp-ble-proxy.service
+Wants=hp-ble-proxy.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/hp-ble-proxy/tunnel.env
+ExecStart=/usr/bin/ssh -NT -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=20 -o ServerAliveCountMax=3 -o ConnectTimeout=10 -R 127.0.0.1:6053:127.0.0.1:6053 ${HOME_ASSISTANT_SSH_HOST}
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+UMask=0077
+MemoryMax=64M
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,18 @@
+[Unit]
+Description=Temporary Bluetooth receiver for Home Assistant thermometers
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=%h/.local/share/hp-ble-proxy/v0.6.0/btproxy -backend bluez -config %h/.config/hp-ble-proxy/proxy.json -encryption-key-file %h/.config/hp-ble-proxy/noise.key
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+UMask=0077
+MemoryMax=192M
+
+[Install]
+WantedBy=default.target

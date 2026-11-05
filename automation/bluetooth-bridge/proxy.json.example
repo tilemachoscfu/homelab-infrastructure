@@ -1,0 +1,12 @@
+{
+  "name": "hp-ble-proxy",
+  "friendly-name": "Bluetooth receiver bridge",
+  "adapter": "hci0",
+  "raw-adverts": "off",
+  "agent": false,
+  "listen": "127.0.0.1:6053",
+  "mdns": false,
+  "mac": "RECEIVER_ADAPTER_MAC",
+  "scan-mode": "active",
+  "adv-allow": "THERMOMETER_ONE_MAC,THERMOMETER_TWO_MAC"
+}
